@@ -1,3 +1,4 @@
 [submodule "qpl"]
 	path = qpl
 	url = https://github.com/barabanshek/qpl
+	branch = microvm
