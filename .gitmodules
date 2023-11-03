@@ -2,3 +2,6 @@
 	path = qpl
 	url = https://github.com/barabanshek/qpl
 	branch = microvm
+[submodule "benchmark"]
+	path = benchmark
+	url = https://github.com/google/benchmark
