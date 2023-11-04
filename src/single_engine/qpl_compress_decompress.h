@@ -6,15 +6,12 @@
 
 #include "qpl/qpl.h"
 
-namespace qpl_single_engine {
+namespace single_engine {
 
-static constexpr qpl_path_t execution_path = qpl_path_hardware;
-// static constexpr qpl_path_t execution_path = qpl_path_software;
-
-std::unique_ptr<uint8_t[]> init_qpl() {
+std::unique_ptr<uint8_t[]> init_qpl(qpl_path_t e_path) {
   // Job initialization.
   uint32_t job_size = 0;
-  qpl_status status = qpl_get_job_size(execution_path, &job_size);
+  qpl_status status = qpl_get_job_size(e_path, &job_size);
   if (status != QPL_STS_OK) {
     LOG(WARNING) << "An error acquired during job size getting.";
     return std::unique_ptr<uint8_t[]>(nullptr);
@@ -23,7 +20,7 @@ std::unique_ptr<uint8_t[]> init_qpl() {
   std::unique_ptr<uint8_t[]> job_buffer;
   job_buffer = std::make_unique<uint8_t[]>(job_size);
   auto job = reinterpret_cast<qpl_job *>(job_buffer.get());
-  status = qpl_init_job(execution_path, job);
+  status = qpl_init_job(e_path, job);
   if (status != QPL_STS_OK) {
     LOG(WARNING) << "An error acquired during compression job initializing.";
     return std::unique_ptr<uint8_t[]>(nullptr);
@@ -42,10 +39,9 @@ int free_qpl(qpl_job *job) {
   return 0;
 }
 
-int compress(const uint8_t *src, size_t src_size, uint8_t *dst,
-             size_t *dst_size) {
-  int job_n = 1;
-  auto job_buffer = init_qpl();
+int compress(qpl_path_t e_path, const uint8_t *src, size_t src_size,
+             uint8_t *dst, size_t *dst_size) {
+  auto job_buffer = init_qpl(e_path);
   if (job_buffer == nullptr) {
     LOG(WARNING) << "Failed to init qpl.";
     return -1;
@@ -75,9 +71,10 @@ int compress(const uint8_t *src, size_t src_size, uint8_t *dst,
   return 0;
 }
 
-int decompress(const uint8_t *src, size_t src_size, uint8_t *dst,
-               size_t dst_reserved_size, size_t *dst_actual_size) {
-  auto job_buffer = init_qpl();
+int decompress(qpl_path_t e_path, const uint8_t *src, size_t src_size,
+               uint8_t *dst, size_t dst_reserved_size,
+               size_t *dst_actual_size) {
+  auto job_buffer = init_qpl(e_path);
   if (job_buffer == nullptr) {
     LOG(WARNING) << "Failed to init qpl.";
     return -1;
@@ -105,4 +102,4 @@ int decompress(const uint8_t *src, size_t src_size, uint8_t *dst,
   return 0;
 }
 
-} // namespace qpl_single_engine
+} // namespace single_engine
