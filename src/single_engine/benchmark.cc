@@ -13,16 +13,18 @@
 
 namespace single_engine {
 
+static std::map<std::tuple<uint16_t, size_t>, uint8_t *> source_buffs;
+
 auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
                                            auto Inputs...) {
   va_list args;
   va_start(args, Inputs);
   auto execution_path = Inputs;
-  auto mem_size = va_arg(args, size_t);
+  size_t mem_size = va_arg(args, size_t);
+  uint8_t *source_buff = va_arg(args, uint8_t *);
+  assert(source_buff != nullptr);
 
-  auto source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
   auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
-  memset(source_buff, 1, mem_size);
   memset(compressed_buff, 1, mem_size);
 
   size_t compressed_size = 0;
@@ -33,6 +35,7 @@ auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
       return;
     }
   }
+  state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
 
   // Verify.
   auto decompressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
@@ -49,6 +52,8 @@ auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
   }
 
   va_end(args);
+  free(compressed_buff);
+  free(decompressed_buff);
 };
 
 auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
@@ -57,17 +62,19 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
   va_start(args, Inputs);
   auto execution_path = Inputs;
   auto mem_size = va_arg(args, size_t);
+  uint8_t *source_buff = va_arg(args, uint8_t *);
+  assert(source_buff != nullptr);
 
-  auto source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
   auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
-  memset(source_buff, 1, mem_size);
   memset(compressed_buff, 1, mem_size);
+
   size_t compressed_size = 0;
   if (single_engine::compress(execution_path, source_buff, mem_size,
                               compressed_buff, &compressed_size)) {
     LOG(FATAL) << "Failed to compress.";
     return;
   }
+  state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
 
   auto decompressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
   memset(decompressed_buff, 1, mem_size);
@@ -89,27 +96,39 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
   }
 
   va_end(args);
+  free(compressed_buff);
+  free(decompressed_buff);
 };
 
 void register_benchmarks() {
-  for (const auto execution_path : {qpl_path_software, qpl_path_hardware}) {
+  for (const auto entropy : {1, 10, 100, 400}) {
     for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
                                    1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
-      // Compress.
-      benchmark::RegisterBenchmark(
-          "BM_SingleEngineBlocking_Compress_" + std::to_string(mem_size / kkB) +
-              "kB" +
-              (execution_path == qpl_path_software ? "_qpl_path_software"
-                                                   : "_qpl_path_hardware"),
-          BM_SingleEngineBlocking_Compress, execution_path, mem_size);
+      uint8_t *source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
+      double true_entropy = init_rand_memory(source_buff, mem_size, entropy);
+      source_buffs[std::make_tuple(entropy, mem_size)] = source_buff;
 
-      // Decompress.
-      benchmark::RegisterBenchmark(
-          "BM_SingleEngineBlocking_DeCompress_" +
-              std::to_string(mem_size / kkB) + "kB" +
-              (execution_path == qpl_path_software ? "_qpl_path_software"
-                                                   : "_qpl_path_hardware"),
-          BM_SingleEngineBlocking_DeCompress, execution_path, mem_size);
+      for (const auto execution_path : {qpl_path_software, qpl_path_hardware}) {
+        // Compress.
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineBlocking_Compress_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                (execution_path == qpl_path_software ? "_qpl_path_software"
+                                                     : "_qpl_path_hardware"),
+            BM_SingleEngineBlocking_Compress, execution_path, mem_size,
+            source_buff);
+
+        // Decompress.
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineBlocking_DeCompress_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                +(execution_path == qpl_path_software ? "_qpl_path_software"
+                                                      : "_qpl_path_hardware"),
+            BM_SingleEngineBlocking_DeCompress, execution_path, mem_size,
+            source_buff);
+      }
     }
   }
 }
