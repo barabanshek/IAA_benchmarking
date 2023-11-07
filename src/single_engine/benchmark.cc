@@ -101,7 +101,7 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
 };
 
 void register_benchmarks() {
-  for (const auto entropy : {1, 10, 100, 400}) {
+  for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
     for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
                                    1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
       uint8_t *source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
