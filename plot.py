@@ -1,6 +1,7 @@
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 import re
 
 # Check if the script has the right number of arguments
@@ -11,8 +12,11 @@ if len(sys.argv) != 3:
 # Command line arguments
 csv_file_path = sys.argv[1]
 plot_name = sys.argv[2]
+for_paper = True
 
 #
+time_ns_to_ms = 1000000
+time_us_to_ms = 1000
 text_size_big = 20
 text_size_medium = 18
 text_size_small = 12
@@ -30,48 +34,62 @@ except pd.errors.ParserError:
     print(f"Error: The file {csv_file_path} could not be parsed.")
     sys.exit(1)
 
-time_to_ms = 1000000
-r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_(qpl.*)'
-compress_data = {}
-decompress_data = {}
-for index, row in df.iterrows():
-    re_name = re.match(r, row['name'])
-    op = re_name.group(1)
-    size = (int)(re_name.group(2))
-    entropy = (int)(re_name.group(3))
-    if not entropy in compress_data:
-        compress_data[entropy] = {}
-    if not entropy in decompress_data:
-        decompress_data[entropy] = {}
-    true_entropy = re_name.group(4)
-    sw_hw = re_name.group(5)
-    time_ms = row['real_time'] / time_to_ms
-    compression_ratio = row['Compression Ratio']
-    if op == 'Compress':
-        if not size in compress_data[entropy]:
-            compress_data[entropy][size] = [(), ()]
-        if sw_hw == 'qpl_path_software':
-            compress_data[entropy][size][0] = (time_ms, compression_ratio, true_entropy)
-        elif sw_hw == 'qpl_path_hardware':
-            compress_data[entropy][size][1] = (time_ms, compression_ratio, true_entropy)
+def prepare_data_1(size_filer, entropy_filter):
+    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_(qpl.*)'
+    compress_data = {}
+    decompress_data = {}
+    for index, row in df.iterrows():
+        re_name = re.match(r, row['name'])
+        if re_name == None:
+            continue
+
+        op = re_name.group(1)
+        size = (int)(re_name.group(2))
+        if not size_filer == None and not size in size_filer:
+            continue
+
+        entropy = (int)(re_name.group(3))
+        if not entropy_filter == None and not entropy in entropy_filter:
+            continue
+
+        if not entropy in compress_data:
+            compress_data[entropy] = {}
+        if not entropy in decompress_data:
+            decompress_data[entropy] = {}
+
+        true_entropy = re_name.group(4)
+        sw_hw = re_name.group(5)
+        time_ms = row['real_time'] / time_ns_to_ms
+        compression_ratio = row['Compression Ratio']
+
+        if op == 'Compress':
+            if not size in compress_data[entropy]:
+                compress_data[entropy][size] = [(), ()]
+            if sw_hw == 'qpl_path_software':
+                compress_data[entropy][size][0] = (time_ms, compression_ratio, true_entropy)
+            elif sw_hw == 'qpl_path_hardware':
+                compress_data[entropy][size][1] = (time_ms, compression_ratio, true_entropy)
+            else:
+                exit(-1)
+        elif op == 'DeCompress':
+            if not size in decompress_data[entropy]:
+                decompress_data[entropy][size] = [0, 0]
+            if sw_hw == 'qpl_path_software':
+                decompress_data[entropy][size][0] = (time_ms, compression_ratio, true_entropy)
+            elif sw_hw == 'qpl_path_hardware':
+                decompress_data[entropy][size][1] = (time_ms, compression_ratio, true_entropy)
+            else:
+                exit(-1)
         else:
             exit(-1)
-    elif op == 'DeCompress':
-        if not size in decompress_data[entropy]:
-            decompress_data[entropy][size] = [0, 0]
-        if sw_hw == 'qpl_path_software':
-            decompress_data[entropy][size][0] = (time_ms, compression_ratio, true_entropy)
-        elif sw_hw == 'qpl_path_hardware':
-            decompress_data[entropy][size][1] = (time_ms, compression_ratio, true_entropy)
-        else:
-            exit(-1)
-    else:
-        exit(-1)
+
+    return compress_data, decompress_data
 
 # Plot #1 - SW vs. HW, single thread, different message sizes, different entropy.
-def plot_exp_1(plot_name, compress_data, decompress_data):
-    fig, axs = plt.subplots(len(compress_data.keys()), 2, figsize=(12, 16))
-    for ax_row, entropy, idx_X in zip(axs, list(compress_data.keys()), range(len(list(compress_data.keys())))):
+def plot_exp_1(plot_name, data):
+    compress_data, decompress_data = data
+    fig, axs = plt.subplots(len(compress_data), 2, figsize=(12, 4 * len(compress_data)))
+    for ax_row, entropy, idx_X in zip(axs, list(compress_data), range(len(list(compress_data)))):
         for ax, data, title, idx in zip(ax_row, [compress_data[entropy], decompress_data[entropy]], [f'Compression', 'Decompression'], [0, 1]):
             df_raw = pd.DataFrame.from_dict(data, orient='index', columns=['Software', 'Hardware'])
             df = df_raw.map(lambda x: x[0])
@@ -118,8 +136,7 @@ def plot_exp_1(plot_name, compress_data, decompress_data):
             ax.set_xlabel('Data size, kB', fontsize=text_size_big)
             ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
             ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
-            if idx_X == 0:
-                ax.set_title(title, fontsize=text_size_big)
+            ax.set_title(title, fontsize=text_size_big)
             if idx == 0:
                 ax.set_ylabel('Time, ms', fontsize=text_size_big)
                 ax.legend(loc='upper left', fontsize=text_size_medium)
@@ -131,8 +148,9 @@ def plot_exp_1(plot_name, compress_data, decompress_data):
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
-# Plot #2
-def plot_exp_2(plot_name, compress_data, decompress_data):
+# Plot #2 - SW vs. HW, single thread, different message sizes, different entropy (another view).
+def plot_exp_2(plot_name, data):
+    compress_data, decompress_data = data
     data_sw = {}
     data_hw = {}
     for entropy, v in compress_data.items():
@@ -153,9 +171,9 @@ def plot_exp_2(plot_name, compress_data, decompress_data):
                 hw_compression_ratio, hw_time_ms, decompress_data[entropy][size][1][0], hw_true_entropy
             ]
 
-    fig, axs = plt.subplots(2, len(data_sw), figsize=(48, 6))
-    for axes, data, text in zip(axs, [data_sw, data_hw], ['Software', 'Hardware']):
-        for ax, (size, entropy_v) in zip(axes, data.items()):
+    fig, axs = plt.subplots(2, len(data_sw), figsize=(6 * len(data_sw), 6))
+    for axes, data, text, idx_x in zip(axs, [data_sw, data_hw], ['Software', 'Hardware'], [0, 1]):
+        for ax, (size, entropy_v), idx_y in zip(axes, data.items(), range(len(data))):
             df = pd.DataFrame.from_dict(entropy_v, orient='index', columns=['Compression ratio', 'Compression time, ms', 'Decompression time, ms', 'True entropy'])
             df.reset_index(inplace=True)
             df.rename(columns={'index': 'Key'}, inplace=True)
@@ -163,21 +181,28 @@ def plot_exp_2(plot_name, compress_data, decompress_data):
 
             ax_1 = ax.twinx()
 
-            width = 0.35
+            width = 0.43
             x_positions = range(len(df))
-            ax.bar(x_positions, df['Compression ratio'], width, label='Software', align='center')
+            ax.bar(x_positions, df['Compression ratio'], width, label='Software', align='center', color='gray')
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
             ax.set_xticks([p + width / 2 for p in range(len(df))])
-            ax.set_xticklabels(['{:.2f}'.format(1000 * float(x)) for x in df['True entropy']], rotation=45)
-            ax.set_xlabel('Shannon entropy')
-            ax.set_title(f'Data size: {size}kB')
-            # ax.set_yscale('log')
-            ax.set_ylabel(f'{text}: compression ratio')
+            ax.set_xticklabels(['{:.2f}'.format(1 * float(x)) for x in df['True entropy']], fontsize=text_size_medium, rotation=45)
+            if idx_x == 1:
+                ax.set_xlabel('Shannon entropy', fontsize=text_size_big)
+            if idx_x == 0:
+                ax.set_title(f'Data size: {size}kB', fontsize=text_size_big)
             ax.grid()
+            # ax.set_yscale('log')
+            if idx_y == 0:
+                ax.set_ylabel(f'Compression \n ratio', fontsize=text_size_big)
+            if idx_y == 1:
+                ax_1.set_ylabel("Time, ms", fontsize=text_size_big)
 
-            ax_1.plot(x_positions, df['Compression time, ms'], color='r', label='Compression time')
-            ax_1.plot(x_positions, df['Decompression time, ms'], color='black', label='Decompression time')
-            ax_1.set_ylabel("Time, ms")
-            ax_1.legend()
+            ax_1.plot(x_positions, df['Compression time, ms'], label='Compression time', color='black', marker='o')
+            ax_1.plot(x_positions, df['Decompression time, ms'], label='Decompression time', color='darkred', marker='o')
+            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
+            if idx_x == 0 and idx_y == 0:
+                ax_1.legend(fontsize=text_size_small)
 
     for r in ['png', 'pdf']:
         plot_name = f'{plot_name}_#2.{r}'
@@ -185,6 +210,99 @@ def plot_exp_2(plot_name, compress_data, decompress_data):
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
+def prepare_and_plot_exp_3(plot_name, size_filer, entropy_filter, entropy_filter_text):
+    r = r'BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_([0-9]*)kB_entropy_(.*)_(.*)_level_([0-9])'
+    data = {}
+    compression_levels = []
+    for index, row in df.iterrows():
+        re_name = re.match(r, row['name'])
+        if re_name == None:
+            continue
+
+        size = (int)(re_name.group(1))
+        if not size_filer == None and not size in size_filer:
+            continue
+
+        entropy = (int)(re_name.group(2))
+        if not entropy_filter == None and not entropy in entropy_filter:
+            continue
+
+        compression_level = (int)(re_name.group(4))
+        compression_ratio = row['Compression Ratio']
+        compression_time = row['Compression Time'] / time_us_to_ms
+        decompression_time = row['real_time'] / time_ns_to_ms
+
+        if not compression_level in compression_levels:
+            compression_levels.append(compression_level)
+        if not entropy in data:
+            data[entropy] = {}
+        if not size in data[entropy]:
+            data[entropy][size] = {}
+        data[entropy][size][compression_level] = [compression_ratio, compression_time, decompression_time]
+
+    # plot.
+    fig, axs = plt.subplots(1, len(data), figsize=(6 * len(data), 4))
+    for (entropy, entropy_v), ax, idx in zip(data.items(), axs, range(len(data))):
+        ax_1 = ax.twinx()
+
+        o = 0
+        plots = []
+        for c_lvl, hatch_pattern in zip(compression_levels, ['', 'x']):
+            new_dict = {}
+            for k, v in entropy_v.items():
+                new_dict[k] = v[c_lvl]
+            df_raw = pd.DataFrame.from_dict(new_dict, orient='index', columns=['Compression ratio', 'Compression time', 'Decompression time'])
+            df_raw.reset_index(inplace=True)
+            df_raw.rename(columns={'index': 'Key'}, inplace=True)
+            df_raw.sort_values('Key', inplace=True)
+
+            width = 0.15
+            x_positions = range(len(df_raw))
+            pl = ax.bar([p + o for p in x_positions], df_raw['Compression ratio'], width, align='center', color='gray', label=f'Compr. ratio, level {c_lvl}', hatch=hatch_pattern)
+            plots.append(pl)
+            pl = ax_1.bar([p + o + width for p in x_positions], df_raw['Decompression time'], width, align='center', color='darkred', label=f'Decompr. time, level {c_lvl}', hatch=hatch_pattern)
+            plots.append(pl)
+            ax.set_xticks([p + width for p in range(len(df_raw))])
+            ax.set_xticklabels(df_raw['Key'].astype(str), fontsize=text_size_medium)
+            if not entropy_filter == None:
+                ax.set_title(f'Entropy: {entropy_filter_text[idx]}', fontsize=text_size_big)
+            else:
+                ax.set_title(f'Entropy: {entropy}', fontsize=text_size_big)
+            ax.set_xlabel('Data size, kB', fontsize=text_size_big)
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
+
+            if idx == 0:
+                ax.set_ylabel('Compression ratio', fontsize=text_size_big)
+            if idx == len(data) - 1:
+                ax_1.set_ylabel('Decompression time, \n ms', fontsize=text_size_big)
+
+            o += 2 * width
+
+        ax.grid()
+        # ax_1.grid()
+
+        # TODO: fix it
+        # if idx == 0:
+            # labs = [l.get_label() for l in plots]
+            # ax.legend(plots, labs, ncol=2, bbox_to_anchor=(0.3, 1.3), fontsize=text_size_small)
+
+    for r in ['png', 'pdf']:
+        plot_name = f'{plot_name}_#3.{r}'
+        fig.tight_layout(pad=2.0)
+        plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
+        print(f"Plot saved in {plot_name}")
+
+
+
+#
 # Plot experiments.
-# plot_exp_1(plot_name, compress_data, decompress_data)
-plot_exp_2(plot_name, compress_data, decompress_data)
+#
+if for_paper:
+    plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
+    plot_exp_2(plot_name, prepare_data_1([256, 4], None))
+    prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
+else:
+    plot_exp_1(plot_name, prepare_data_1(None, None))
+    plot_exp_2(plot_name, prepare_data_1(None, None))
+    prepare_and_plot_exp_3(plot_name, None, None, None)

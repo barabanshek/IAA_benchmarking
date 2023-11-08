@@ -1,6 +1,7 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <random>
@@ -8,6 +9,21 @@
 
 static constexpr uint64_t kkB = 1024;
 static constexpr uint64_t kMB = 1024 * 1024;
+
+// Measure time.
+class TimeScope {
+public:
+  TimeScope() { start_tick = std::chrono::high_resolution_clock::now(); }
+
+  template <class T> auto GetTimeStamp() {
+    auto now_tick = std::chrono::high_resolution_clock::now();
+    auto delta_tick = std::chrono::duration_cast<T>(now_tick - start_tick);
+    return delta_tick.count();
+  }
+
+private:
+  std::chrono::time_point<std::chrono::high_resolution_clock> start_tick;
+};
 
 /// @param entropy -- when bigger, the entrpy is bigger.
 /// Returns the true Shannon entropy.

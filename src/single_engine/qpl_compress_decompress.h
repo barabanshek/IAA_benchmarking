@@ -39,8 +39,9 @@ int free_qpl(qpl_job *job) {
   return 0;
 }
 
-int compress(qpl_path_t e_path, const uint8_t *src, size_t src_size,
-             uint8_t *dst, size_t *dst_size) {
+int compress(qpl_path_t e_path, qpl_compression_levels level,
+             const uint8_t *src, size_t src_size, uint8_t *dst,
+             size_t *dst_size) {
   auto job_buffer = init_qpl(e_path);
   if (job_buffer == nullptr) {
     LOG(WARNING) << "Failed to init qpl.";
@@ -50,7 +51,7 @@ int compress(qpl_path_t e_path, const uint8_t *src, size_t src_size,
   // Compress.
   auto job = reinterpret_cast<qpl_job *>(job_buffer.get());
   job->op = qpl_op_compress;
-  job->level = qpl_default_level;
+  job->level = level;
   job->next_in_ptr = const_cast<uint8_t *>(src);
   job->next_out_ptr = dst;
   job->available_in = src_size;
