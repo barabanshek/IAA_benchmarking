@@ -383,17 +383,16 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
-
+#
 # Plot experiments.
 #
-# if for_paper:
-#     plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
-#     plot_exp_2(plot_name, prepare_data_1([256, 4], None))
-#     prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
-# else:
-#     plot_exp_1(plot_name, prepare_data_1(None, None))
-#     plot_exp_2(plot_name, prepare_data_1(None, None))
-#     prepare_and_plot_exp_3(plot_name, None, None, None)
-
-
-prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200], ['Fixed Block', 'Dynamic Block'])
+if for_paper:
+    plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
+    plot_exp_2(plot_name, prepare_data_1([256, 4], None))
+    # prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
+    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200], ['Fixed Block', 'Dynamic Block'])
+else:
+    plot_exp_1(plot_name, prepare_data_1(None, None))
+    plot_exp_2(plot_name, prepare_data_1(None, None))
+    # prepare_and_plot_exp_3(plot_name, None, None, None)
+    prepare_and_plot_exp_4(plot_name, None, None, ['Fixed Block', 'Dynamic Block'])
