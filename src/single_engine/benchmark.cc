@@ -16,6 +16,8 @@ namespace single_engine {
 // {entropy, memory size} -> {ptr, true entropy}.
 static std::map<std::tuple<uint16_t, size_t>, std::tuple<uint8_t *, double>>
     source_buffs;
+// entropy -> huffman_table.
+static std::map<uint16_t, qpl_huffman_table_t> huffman_tables;
 
 void zero_initialize_counters(benchmark::State &state) {
   state.counters["Compression Time"] = 0;
@@ -32,6 +34,7 @@ auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
   size_t mem_size = va_arg(args, size_t);
   uint8_t *source_buff = va_arg(args, uint8_t *);
   assert(source_buff != nullptr);
+  qpl_huffman_table_t huffman_table = va_arg(args, qpl_huffman_table_t);
 
   auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
   memset(compressed_buff, 1, mem_size);
@@ -43,14 +46,13 @@ auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
   zero_initialize_counters(state);
 
   // Benchmark compress.
-  qpl_huffman_table_t huffman_tables;
   uint32_t last_bit_offset;
   size_t compressed_size = 0;
   for (auto _ : state) {
     if (single_engine::compress(
             execution_path, qpl_default_level,
             static_cast<single_engine::CompressionMode>(compression_mode),
-            &huffman_tables, &last_bit_offset, source_buff, mem_size,
+            &huffman_table, &last_bit_offset, source_buff, mem_size,
             compressed_buff, &compressed_size)) {
       LOG(WARNING) << "Failed to compress.";
       continue;
@@ -63,7 +65,7 @@ auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
   if (single_engine::decompress(
           execution_path,
           static_cast<single_engine::CompressionMode>(compression_mode),
-          huffman_tables, last_bit_offset, compressed_buff, compressed_size,
+          huffman_table, last_bit_offset, compressed_buff, compressed_size,
           decompressed_buff, mem_size, &decompression_size)) {
     LOG(WARNING) << "Failed to decompress.";
     goto err;
@@ -89,6 +91,7 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
   auto mem_size = va_arg(args, size_t);
   uint8_t *source_buff = va_arg(args, uint8_t *);
   assert(source_buff != nullptr);
+  qpl_huffman_table_t huffman_table = va_arg(args, qpl_huffman_table_t);
 
   auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
   memset(compressed_buff, 1, mem_size);
@@ -100,13 +103,12 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
   zero_initialize_counters(state);
 
   // Compress for verification.
-  qpl_huffman_table_t huffman_tables;
   uint32_t last_bit_offset;
   size_t compressed_size = 0;
   if (single_engine::compress(
           execution_path, qpl_default_level,
           static_cast<single_engine::CompressionMode>(compression_mode),
-          &huffman_tables, &last_bit_offset, source_buff, mem_size,
+          &huffman_table, &last_bit_offset, source_buff, mem_size,
           compressed_buff, &compressed_size)) {
     LOG(WARNING) << "Failed to compress.";
     for (auto _ : state) {
@@ -123,7 +125,7 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
     if (single_engine::decompress(
             execution_path,
             static_cast<single_engine::CompressionMode>(compression_mode),
-            huffman_tables, last_bit_offset, compressed_buff, compressed_size,
+            huffman_table, last_bit_offset, compressed_buff, compressed_size,
             decompressed_buff, mem_size, &decompression_size)) {
       LOG(WARNING) << "Failed to decompress.";
       continue;
@@ -216,6 +218,17 @@ void register_benchmarks() {
       source_buffs[std::make_tuple(entropy, mem_size)] =
           std::make_tuple(source_buff, true_entropy);
     }
+
+    // Make Huffman tables for different entropy levels.
+    size_t max_mem_size = 512 * kMB;
+    qpl_huffman_table_t huffman_table;
+    auto src =
+        std::get<0>(source_buffs[std::make_tuple(entropy, max_mem_size)]);
+    if (create_static_huffman_tables(qpl_path_hardware, &huffman_table, src,
+                                     max_mem_size)) {
+      LOG(FATAL) << "Failed to create Huffman tables";
+    }
+    huffman_tables[entropy] = huffman_table;
   }
 
   for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
@@ -228,7 +241,8 @@ void register_benchmarks() {
 
       for (const auto execution_path : {qpl_path_software, qpl_path_hardware}) {
         for (const auto compression_mode :
-             {kModeStatic, kModeDynamic, kModeHuffmanOnly}) {
+             //  {kModeFixed, kModeDynamic, kModeStatic, kModeHuffmanOnly}) {
+             {kModeFixed, kModeDynamic, kModeStatic}) {
           // Compress.
           benchmark::RegisterBenchmark(
               "BM_SingleEngineBlocking_Compress_" +
@@ -238,7 +252,8 @@ void register_benchmarks() {
                   (execution_path == qpl_path_software ? "_qpl_path_software"
                                                        : "_qpl_path_hardware"),
               BM_SingleEngineBlocking_Compress, execution_path,
-              static_cast<int>(compression_mode), mem_size, source_buff);
+              static_cast<int>(compression_mode), mem_size, source_buff,
+              huffman_tables[entropy]);
 
           // Decompress.
           benchmark::RegisterBenchmark(
@@ -249,31 +264,33 @@ void register_benchmarks() {
                   +(execution_path == qpl_path_software ? "_qpl_path_software"
                                                         : "_qpl_path_hardware"),
               BM_SingleEngineBlocking_DeCompress, execution_path,
-              static_cast<int>(compression_mode), mem_size, source_buff);
+              static_cast<int>(compression_mode), mem_size, source_buff,
+              huffman_tables[entropy]);
         }
       }
     }
   }
 
-  for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
-    for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
-                                   1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
-      auto source_buff =
-          std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
-      auto true_entropy =
-          std::get<1>(source_buffs[std::make_tuple(entropy, mem_size)]);
+  // for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
+  //   for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
+  //                                  1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
+  //     auto source_buff =
+  //         std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
+  //     auto true_entropy =
+  //         std::get<1>(source_buffs[std::make_tuple(entropy, mem_size)]);
 
-      for (const auto compression_level : {qpl_level_1, qpl_level_3}) {
-        benchmark::RegisterBenchmark(
-            "BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_" +
-                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
-                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
-                "_level_" + std::to_string(compression_level),
-            BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress,
-            compression_level, mem_size, source_buff);
-      }
-    }
-  }
+  //     for (const auto compression_level : {qpl_level_1, qpl_level_3}) {
+  //       benchmark::RegisterBenchmark(
+  //           "BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_" +
+  //               std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+  //               std::to_string(entropy) + "_" + std::to_string(true_entropy)
+  //               +
+  //               "_level_" + std::to_string(compression_level),
+  //           BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress,
+  //           compression_level, mem_size, source_buff);
+  //     }
+  //   }
+  // }
 }
 
 } // namespace single_engine

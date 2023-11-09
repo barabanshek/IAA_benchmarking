@@ -311,8 +311,6 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
             continue
         true_entropy = re_name.group(4)
         mode = re_name.group(5)
-        if mode == '2':
-            continue
         if not mode in modes:
             modes.append(mode)
 
@@ -373,7 +371,7 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
             if idx == 0 and idx_y == 0:
                 plots = [b1, b2, b3]
                 labs = [l.get_label() for l in plots]
-                ax.legend(plots, labs, ncol=1, fontsize=text_size_medium, loc='upper left')
+                ax.legend(plots, labs, ncol=1, fontsize=text_size_small, loc='upper left')
             ax.grid()
 
 
@@ -390,9 +388,9 @@ if for_paper:
     plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
     plot_exp_2(plot_name, prepare_data_1([256, 4], None))
     # prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
-    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200], ['Fixed Block', 'Dynamic Block'])
+    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200], ['Fixed Block', 'Dynamic Block', 'Static Block'])
 else:
     plot_exp_1(plot_name, prepare_data_1(None, None))
     plot_exp_2(plot_name, prepare_data_1(None, None))
     # prepare_and_plot_exp_3(plot_name, None, None, None)
-    prepare_and_plot_exp_4(plot_name, None, None, ['Fixed Block', 'Dynamic Block'])
+    prepare_and_plot_exp_4(plot_name, None, None, ['Fixed Block', 'Dynamic Block', 'Static Block'])

@@ -1,3 +1,5 @@
+#ifndef _QPL_COMPRESS_DECOMPRESS_H_
+#define _QPL_COMPRESS_DECOMPRESS_H_
 
 #include <memory>
 #include <unistd.h>
@@ -8,7 +10,12 @@
 
 namespace single_engine {
 
-enum CompressionMode { kModeStatic, kModeDynamic, kModeHuffmanOnly };
+enum CompressionMode {
+  kModeFixed,
+  kModeDynamic,
+  kModeHuffmanOnly,
+  kModeStatic
+};
 
 std::unique_ptr<uint8_t[]> init_qpl(qpl_path_t e_path) {
   // Job initialization.
@@ -35,6 +42,38 @@ int free_qpl(qpl_job *job) {
   qpl_status status = qpl_fini_job(job);
   if (status != QPL_STS_OK) {
     LOG(WARNING) << "An error acquired during job finalization.";
+    return -1;
+  }
+
+  return 0;
+}
+
+int create_static_huffman_tables(qpl_path_t e_path,
+                                 qpl_huffman_table_t *c_huffman_table,
+                                 uint8_t *src, size_t src_size) {
+  // Create Huffman tables.
+  qpl_status status = qpl_deflate_huffman_table_create(
+      compression_table_type, e_path, DEFAULT_ALLOCATOR_C, c_huffman_table);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "Failed to allocate Huffman tables";
+    return -1;
+  }
+
+  // Gather statistics.
+  qpl_histogram histogram{};
+  status = qpl_gather_deflate_statistics(src, src_size, &histogram,
+                                         qpl_default_level, e_path);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "Failed to gather statistics.";
+    qpl_huffman_table_destroy(*c_huffman_table);
+    return -1;
+  }
+
+  // Populate the Huffman tabes with the statistics.
+  status = qpl_huffman_table_init_with_histogram(*c_huffman_table, &histogram);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "Failed to populate the Huffman tabels.";
+    qpl_huffman_table_destroy(*c_huffman_table);
     return -1;
   }
 
@@ -78,6 +117,8 @@ int compress(qpl_path_t e_path, qpl_compression_levels level,
         QPL_FLAG_NO_HDRS | QPL_FLAG_GEN_LITERALS | QPL_FLAG_DYNAMIC_HUFFMAN;
     job->huffman_table = *c_huffman_table;
   } else if (mode == kModeStatic) {
+    job->huffman_table = *c_huffman_table;
+  } else if (mode == kModeFixed) {
   } else {
     LOG(WARNING) << "Unsupported mode.";
     return -1;
@@ -157,3 +198,5 @@ int decompress(qpl_path_t e_path, CompressionMode mode,
 }
 
 } // namespace single_engine
+
+#endif
