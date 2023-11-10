@@ -7,6 +7,8 @@
 #include <random>
 #include <vector>
 
+#include "qpl/qpl.h"
+
 static constexpr uint64_t kkB = 1024;
 static constexpr uint64_t kMB = 1024 * 1024;
 
@@ -72,6 +74,38 @@ double init_rand_memory(uint8_t *mem, size_t size, uint16_t entropy,
     return entropy;
   } else
     return 0;
+}
+
+int create_static_huffman_tables(qpl_path_t e_path,
+                                 qpl_huffman_table_t *c_huffman_table,
+                                 const uint8_t *src, size_t src_size) {
+  // Create Huffman tables.
+  qpl_status status = qpl_deflate_huffman_table_create(
+      combined_table_type, e_path, DEFAULT_ALLOCATOR_C, c_huffman_table);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "Failed to allocate Huffman tables";
+    return -1;
+  }
+
+  // Gather statistics.
+  qpl_histogram histogram{};
+  status = qpl_gather_deflate_statistics(const_cast<uint8_t *>(src), src_size,
+                                         &histogram, qpl_default_level, e_path);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "Failed to gather statistics.";
+    qpl_huffman_table_destroy(*c_huffman_table);
+    return -1;
+  }
+
+  // Populate the Huffman tabes with the statistics.
+  status = qpl_huffman_table_init_with_histogram(*c_huffman_table, &histogram);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "Failed to populate the Huffman tabels.";
+    qpl_huffman_table_destroy(*c_huffman_table);
+    return -1;
+  }
+
+  return 0;
 }
 
 #endif

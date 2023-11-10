@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdarg>
 #include <sys/mman.h>
 #include <vector>
@@ -6,6 +7,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include "qpl_canned.h"
 #include "qpl_compress_decompress.h"
 
 #include "../util.h"
@@ -70,7 +72,8 @@ auto BM_SingleEngineBlocking_Compress = [](benchmark::State &state,
     LOG(WARNING) << "Failed to decompress.";
     goto err;
   }
-  if (memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
+  if (decompression_size != mem_size ||
+      memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
     LOG(FATAL) << "Data missmatch.";
     goto err;
   }
@@ -133,7 +136,8 @@ auto BM_SingleEngineBlocking_DeCompress = [](benchmark::State &state,
   }
 
   // Verify.
-  if (memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
+  if (decompression_size != mem_size ||
+      memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
     LOG(FATAL) << "Data missmatch.";
   }
   state.counters["Status"] = 0;
@@ -169,9 +173,10 @@ auto BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress =
       zero_initialize_counters(state);
       TimeScope ts;
       qpl_huffman_table_t huffman_tables;
+      uint32_t last_bit_offset = 0;
       if (single_engine::compress(compress_path, compression_level,
                                   single_engine::kModeDynamic, &huffman_tables,
-                                  nullptr, source_buff, mem_size,
+                                  &last_bit_offset, source_buff, mem_size,
                                   compressed_buff, &compressed_size)) {
         LOG(WARNING) << "Failed to compress.";
         for (auto _ : state) {
@@ -188,16 +193,17 @@ auto BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress =
       // Benchmark decompress in hardware.
       for (auto _ : state) {
         if (single_engine::decompress(
-                decompress_path, single_engine::kModeDynamic, huffman_tables, 0,
-                compressed_buff, compressed_size, decompressed_buff, mem_size,
-                &decompression_size)) {
+                decompress_path, single_engine::kModeDynamic, huffman_tables,
+                last_bit_offset, compressed_buff, compressed_size,
+                decompressed_buff, mem_size, &decompression_size)) {
           LOG(WARNING) << "Failed to decompress.";
           continue;
         }
       }
 
       // Verify.
-      if (memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
+      if (decompression_size != mem_size ||
+          memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
         LOG(FATAL) << "Data missmatch.";
       }
       state.counters["Status"] = 0;
@@ -208,11 +214,127 @@ auto BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress =
       free(decompressed_buff);
     };
 
+auto BM_SingleEngineBlocking_CompressCanned = [](benchmark::State &state,
+                                                 auto Inputs...) {
+  va_list args;
+  va_start(args, Inputs);
+  auto compression_mode = Inputs;
+  size_t mem_size = va_arg(args, size_t);
+  uint8_t *source_buff = va_arg(args, uint8_t *);
+  assert(source_buff != nullptr);
+  const size_t chunk_size = 4 * kkB;
+
+  auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
+  memset(compressed_buff, 1, mem_size);
+
+  //
+  uint8_t *decompressed_buff = nullptr;
+  size_t decompression_size = 0;
+
+  zero_initialize_counters(state);
+
+  // Benchmark compress.
+  size_t compressed_size = 0;
+  for (auto _ : state) {
+    if (single_engine_canned::compress(
+            static_cast<single_engine_canned::CompressionMode>(
+                compression_mode),
+            source_buff, mem_size, compressed_buff, &compressed_size,
+            chunk_size)) {
+      LOG(WARNING) << "Failed to compress.";
+      continue;
+    }
+  }
+  state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
+
+  // Verify with decompress.
+  decompressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
+  if (single_engine_canned::decompress(compressed_buff, compressed_size,
+                                       decompressed_buff, mem_size,
+                                       &decompression_size)) {
+    LOG(WARNING) << "Failed to decompress.";
+    goto err;
+  }
+  if (decompression_size != mem_size ||
+      memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
+    LOG(FATAL) << "Data missmatch.";
+    goto err;
+  }
+  state.counters["Status"] = 0;
+
+err:
+  va_end(args);
+  free(decompressed_buff);
+};
+
+auto BM_SingleEngineBlocking_DeCompressCanned = [](benchmark::State &state,
+                                                   auto Inputs...) {
+  va_list args;
+  va_start(args, Inputs);
+  auto compression_mode = Inputs;
+  auto mem_size = va_arg(args, size_t);
+  uint8_t *source_buff = va_arg(args, uint8_t *);
+  assert(source_buff != nullptr);
+  const size_t chunk_size = 4 * kkB;
+
+  auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
+  memset(compressed_buff, 1, mem_size);
+
+  //
+  uint8_t *decompressed_buff = nullptr;
+  size_t decompression_size = 0;
+
+  zero_initialize_counters(state);
+
+  // Compress for verification.
+  size_t compressed_size = 0;
+  if (single_engine_canned::compress(
+          static_cast<single_engine_canned::CompressionMode>(compression_mode),
+          source_buff, mem_size, compressed_buff, &compressed_size,
+          chunk_size)) {
+    LOG(WARNING) << "Failed to compress.";
+    for (auto _ : state) {
+    }
+    goto err;
+  }
+  state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
+
+  decompressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
+  memset(decompressed_buff, 1, mem_size);
+
+  // Benchmark decompress.
+  for (auto _ : state) {
+    if (single_engine_canned::decompress(compressed_buff, compressed_size,
+                                         decompressed_buff, mem_size,
+                                         &decompression_size)) {
+      LOG(WARNING) << "Failed to decompress.";
+      continue;
+    }
+  }
+
+  // Verify.
+  if (decompression_size != mem_size ||
+      memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
+    LOG(FATAL) << "Data missmatch.";
+  }
+  state.counters["Status"] = 0;
+
+err:
+  va_end(args);
+  free(decompressed_buff);
+};
+
 void register_benchmarks() {
+  // Setup.
+  const std::vector<uint16_t> kEntropyList = {1,   5,   10,  25, 50,
+                                              150, 200, 300, 400};
+  const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 * kMB,
+                                               16 * kMB,  1 * kMB,   256 * kkB,
+                                               64 * kkB,  4 * kkB};
+
   // Register memory.
-  for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
-    for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
-                                   1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
+  for (const auto entropy : kEntropyList) {
+    for (const size_t &mem_size : kMemorySizeList) {
       uint8_t *source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
       double true_entropy = init_rand_memory(source_buff, mem_size, entropy);
       source_buffs[std::make_tuple(entropy, mem_size)] =
@@ -220,7 +342,8 @@ void register_benchmarks() {
     }
 
     // Make Huffman tables for different entropy levels.
-    size_t max_mem_size = 512 * kMB;
+    size_t max_mem_size =
+        *std::max_element(kMemorySizeList.begin(), kMemorySizeList.end());
     qpl_huffman_table_t huffman_table;
     auto src =
         std::get<0>(source_buffs[std::make_tuple(entropy, max_mem_size)]);
@@ -231,9 +354,9 @@ void register_benchmarks() {
     huffman_tables[entropy] = huffman_table;
   }
 
-  for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
-    for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
-                                   1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
+  // Register benchmarks.
+  for (const auto entropy : kEntropyList) {
+    for (const size_t &mem_size : kMemorySizeList) {
       auto source_buff =
           std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
       auto true_entropy =
@@ -241,7 +364,6 @@ void register_benchmarks() {
 
       for (const auto execution_path : {qpl_path_software, qpl_path_hardware}) {
         for (const auto compression_mode :
-             //  {kModeFixed, kModeDynamic, kModeStatic, kModeHuffmanOnly}) {
              {kModeFixed, kModeDynamic, kModeStatic}) {
           // Compress.
           benchmark::RegisterBenchmark(
@@ -268,29 +390,41 @@ void register_benchmarks() {
               huffman_tables[entropy]);
         }
       }
+
+      for (const auto compression_level : {qpl_level_1, qpl_level_3}) {
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                "_level_" + std::to_string(compression_level),
+            BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress,
+            compression_level, mem_size, source_buff);
+      }
+
+      for (const auto compression_mode :
+           {single_engine_canned::kContinious, single_engine_canned::kNaive,
+            single_engine_canned::kCanned}) {
+
+        // Compress.
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineBlocking_Compress_Canned_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                "_mode_" + std::to_string(compression_mode),
+            BM_SingleEngineBlocking_CompressCanned,
+            static_cast<int>(compression_mode), mem_size, source_buff);
+
+        // Decompress.
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineBlocking_DeCompress_Canned_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                "_mode_" + std::to_string(compression_mode),
+            BM_SingleEngineBlocking_DeCompressCanned,
+            static_cast<int>(compression_mode), mem_size, source_buff);
+      }
     }
   }
-
-  // for (const auto entropy : {1, 5, 10, 25, 50, 150, 200, 300, 400}) {
-  //   for (const size_t &mem_size : {512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB,
-  //                                  1 * kMB, 256 * kkB, 64 * kkB, 4 * kkB}) {
-  //     auto source_buff =
-  //         std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
-  //     auto true_entropy =
-  //         std::get<1>(source_buffs[std::make_tuple(entropy, mem_size)]);
-
-  //     for (const auto compression_level : {qpl_level_1, qpl_level_3}) {
-  //       benchmark::RegisterBenchmark(
-  //           "BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_" +
-  //               std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
-  //               std::to_string(entropy) + "_" + std::to_string(true_entropy)
-  //               +
-  //               "_level_" + std::to_string(compression_level),
-  //           BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress,
-  //           compression_level, mem_size, source_buff);
-  //     }
-  //   }
-  // }
 }
 
 } // namespace single_engine

@@ -48,38 +48,6 @@ int free_qpl(qpl_job *job) {
   return 0;
 }
 
-int create_static_huffman_tables(qpl_path_t e_path,
-                                 qpl_huffman_table_t *c_huffman_table,
-                                 uint8_t *src, size_t src_size) {
-  // Create Huffman tables.
-  qpl_status status = qpl_deflate_huffman_table_create(
-      compression_table_type, e_path, DEFAULT_ALLOCATOR_C, c_huffman_table);
-  if (status != QPL_STS_OK) {
-    LOG(WARNING) << "Failed to allocate Huffman tables";
-    return -1;
-  }
-
-  // Gather statistics.
-  qpl_histogram histogram{};
-  status = qpl_gather_deflate_statistics(src, src_size, &histogram,
-                                         qpl_default_level, e_path);
-  if (status != QPL_STS_OK) {
-    LOG(WARNING) << "Failed to gather statistics.";
-    qpl_huffman_table_destroy(*c_huffman_table);
-    return -1;
-  }
-
-  // Populate the Huffman tabes with the statistics.
-  status = qpl_huffman_table_init_with_histogram(*c_huffman_table, &histogram);
-  if (status != QPL_STS_OK) {
-    LOG(WARNING) << "Failed to populate the Huffman tabels.";
-    qpl_huffman_table_destroy(*c_huffman_table);
-    return -1;
-  }
-
-  return 0;
-}
-
 int compress(qpl_path_t e_path, qpl_compression_levels level,
              CompressionMode mode, qpl_huffman_table_t *c_huffman_table,
              uint32_t *last_bit_offset, const uint8_t *src, size_t src_size,

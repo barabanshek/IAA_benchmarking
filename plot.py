@@ -294,8 +294,7 @@ def prepare_and_plot_exp_3(plot_name, size_filer, entropy_filter, entropy_filter
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
-def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
-    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_qpl_path_hardware'
+def prepare_and_plot_exp_4_5(exp, r, plot_name, size_filer, entropy_filter, mode_names):
     data = {}
     modes = []
     for index, row in df.iterrows():
@@ -333,7 +332,8 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
 
     # plot.
     L = len(list(data.values())[0])
-    fig, axs = plt.subplots(len(data), L, figsize=(7 * len(data), 4 * L))
+    fig, axs = plt.subplots(len(data), L, figsize=(7 * len(data), 3.5 * L))
+    axs = np.transpose(axs)
     for (entropy, entropy_v), ax_s, idx in zip(data.items(), axs, range(len(axs))):
         for (size, size_v), ax, idx_y in zip(entropy_v.items(), ax_s, range(len(ax_s))):
             true_entropy = float(list(size_v.values())[0][1])
@@ -354,16 +354,16 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
             ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
             ax.set_title('Size(MB)/ Entropy: ' + f'{size / 1000:.1f}/ {true_entropy:.5f}', fontsize=text_size_big)
 
-            if idx_y == 0:
+            if idx == 0:
                 ax.set_ylabel('Compression ratio', fontsize=text_size_big)
-            if idx_y == len(ax_s) - 1:
+            if idx == len(ax_s) - 1:
                 ax_1.set_ylabel('Time, ms', fontsize=text_size_big)
 
             # Annotate.
             def add_value_labels(bars, axis):
                 for bar in bars:
                     height = bar.get_height()
-                    axis.text(bar.get_x() + bar.get_width() / 2., 0.7002 * height, f'{height:.1f}', ha='center', va='bottom', fontsize=text_size_big, rotation=90)
+                    axis.text(bar.get_x() + bar.get_width() / 2., 0.6002 * height, f'{height:.1f}', ha='center', va='bottom', fontsize=text_size_big, rotation=90)
             add_value_labels(b1, ax)
             add_value_labels(b2, ax_1)
             add_value_labels(b3, ax_1)
@@ -371,15 +371,23 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
             if idx == 0 and idx_y == 0:
                 plots = [b1, b2, b3]
                 labs = [l.get_label() for l in plots]
-                ax.legend(plots, labs, ncol=1, fontsize=text_size_small, loc='upper left')
+                # ax.legend(plots, labs, ncol=1, fontsize=text_size_small, loc='upper left')
             ax.grid()
 
 
     for r in ['png', 'pdf']:
-        plot_name = f'{plot_name}_#4.{r}'
+        plot_name = f'{plot_name}_#{exp}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
+
+def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter):
+    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_qpl_path_hardware'
+    prepare_and_plot_exp_4_5(4, r, plot_name, size_filer, entropy_filter, ['Fixed Block', 'Dynamic Block', 'Static Block'])
+
+def prepare_and_plot_exp_5(plot_name, size_filer, entropy_filter):
+    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)'
+    prepare_and_plot_exp_4_5(5, r, plot_name, size_filer, entropy_filter, ['Continious \nbaseline', 'Naive Dynamic \nBlock', 'Canned'])
 
 #
 # Plot experiments.
@@ -387,10 +395,10 @@ def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter, mode_names):
 if for_paper:
     plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
     plot_exp_2(plot_name, prepare_data_1([256, 4], None))
-    # prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
-    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200], ['Fixed Block', 'Dynamic Block', 'Static Block'])
+    prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
+    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
 else:
     plot_exp_1(plot_name, prepare_data_1(None, None))
     plot_exp_2(plot_name, prepare_data_1(None, None))
-    # prepare_and_plot_exp_3(plot_name, None, None, None)
-    prepare_and_plot_exp_4(plot_name, None, None, ['Fixed Block', 'Dynamic Block', 'Static Block'])
+    prepare_and_plot_exp_3(plot_name, None, None, None)
+    prepare_and_plot_exp_4(plot_name, None, None)
