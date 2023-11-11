@@ -4,8 +4,11 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <random>
 #include <vector>
+
+#include <benchmark/benchmark.h>
 
 #include "qpl/qpl.h"
 
@@ -26,6 +29,13 @@ public:
 private:
   std::chrono::time_point<std::chrono::high_resolution_clock> start_tick;
 };
+
+// Initialize all supported counters with zero.
+void zero_initialize_counters(benchmark::State &state) {
+  state.counters["Compression Time"] = 0;
+  state.counters["Compression Ratio"] = 0;
+  state.counters["Status"] = -1;
+}
 
 /// @param entropy -- when bigger, the entrpy is bigger.
 /// Returns the true Shannon entropy.
