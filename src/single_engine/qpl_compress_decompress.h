@@ -48,6 +48,34 @@ int free_qpl(qpl_job *job) {
   return 0;
 }
 
+int iaa_translation_fetch(uint8_t *src, size_t src_size) {
+  auto job_buffer = init_qpl(qpl_path_hardware);
+  if (job_buffer == nullptr) {
+    LOG(WARNING) << "Failed to init qpl.";
+    return -1;
+  }
+
+  // CRC.
+  constexpr const uint64_t poly = 0x04C11DB700000000;
+  auto job = reinterpret_cast<qpl_job *>(job_buffer.get());
+  job->op = qpl_op_crc64;
+  job->next_in_ptr = const_cast<uint8_t *>(src);
+  job->available_in = src_size;
+  job->crc64_poly = poly;
+
+  qpl_status status = qpl_execute_job(job);
+  if (status != QPL_STS_OK) {
+    LOG(WARNING) << "An error " << status << " acquired during crc";
+    return -1;
+  }
+
+  if (free_qpl(job)) {
+    LOG(WARNING) << "Failed to free resources.";
+    return -1;
+  }
+  return 0;
+}
+
 int compress(qpl_path_t e_path, qpl_compression_levels level,
              CompressionMode mode, qpl_huffman_table_t *c_huffman_table,
              uint32_t *last_bit_offset, const uint8_t *src, size_t src_size,

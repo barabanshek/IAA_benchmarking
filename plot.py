@@ -470,6 +470,87 @@ def prepare_and_plot_exp_6(plot_name, size_filer, entropy_filter):
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
+def prepare_and_plot_exp_7(plot_name, size_filer, entropy_filter):
+    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_pfscenario_(.*)'
+    data = {}
+    modes = []
+    pfscenarios = {0: 'Major \npf', 1: 'Minor \npf', 2: 'ATS \nmiss', 3: 'No \nfaults'}
+    for index, row in df.iterrows():
+        re_name = re.match(r, row['name'])
+        if re_name == None:
+            continue
+        op = re_name.group(1)
+        size = (int)(re_name.group(2))
+        if not size_filer == None and not size in size_filer:
+            continue
+        entropy = (int)(re_name.group(3))
+        if not entropy_filter == None and not entropy in entropy_filter:
+            continue
+        true_entropy = re_name.group(4)
+        pf_scenario = (int)(re_name.group(5))
+        if not pf_scenario in pfscenarios:
+            exit(0)
+
+        time_ms = row['real_time'] / time_ns_to_ms
+        compression_ratio = row['Compression Ratio']
+
+        if not entropy in data:
+            data[entropy] = {}
+        if not size in data[entropy]:
+            data[entropy][size] = {}
+            data[entropy][size]['compress'] = []
+            data[entropy][size]['decompress'] = []
+
+        if op == 'Compress':
+            data[entropy][size]['compress'].append(time_ms)
+        elif op == 'DeCompress':
+            data[entropy][size]['decompress'].append(time_ms)
+        else:
+            exit(0)
+
+    L = len(list(data.values())[0])
+    fig, axs = plt.subplots(len(data), L, figsize=(6.5 * len(data), 3.5 * L))
+    # axs = np.transpose(axs)
+    for (entropy, entropy_v), ax_s, idx_x in zip(data.items(), axs, range(len(axs))):
+        for (size, size_v), ax, idx_y in zip(entropy_v.items(), ax_s, range(len(ax_s))):
+            ax_1 = ax.twinx()
+
+            bars = []
+            for (op, op_v), axx, c, idx, l in zip(size_v.items(), [ax, ax_1], ['gray', 'darkred'], range(len(size_v.items())), ['Compression', 'Decompression']):
+                width = 0.23
+                x_positions = [t + width * idx for t in range(len(pfscenarios.values()))]
+                b = axx.bar(x_positions, op_v, width, align='center', color=c, label=l)
+                bars.append(b)
+
+                # Annotate.
+                def add_value_labels(bars, axis):
+                    for bar in bars:
+                        height = bar.get_height()
+                        axis.text(bar.get_x() + bar.get_width() / 2., 0.3002 * height, f'{height:.3f}', ha='center', va='bottom', fontsize=text_size_big, rotation=90)
+                add_value_labels(b, axx)
+
+            ax.set_xticks([t for t in range(len(pfscenarios.values()))])
+            ax.set_xticklabels(pfscenarios.values(), fontsize=text_size_medium, rotation=0)
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
+            # ax.set_title('Size(kB)/ Entropy: ' + f'{size:.3f}/ {entropy:.5f}', fontsize=text_size_big)
+            ax.set_title('Data size: ' + f'{size:.0f}kB', fontsize=text_size_big)
+            ax.grid()
+
+            # ax.set_xlabel('Number of jobs', fontsize=text_size_big)
+            if idx_y == 0:
+                ax.set_ylabel('Time, ms', fontsize=text_size_big)
+
+            if idx_y == 1:
+                labs = [l.get_label() for l in bars]
+                ax.legend(bars, labs, ncol=1, fontsize=text_size_medium, loc='upper right')
+
+    for r in ['png', 'pdf']:
+        plot_name = f'{plot_name}_#{7}.{r}'
+        fig.tight_layout(pad=2.0)
+        plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
+        print(f"Plot saved in {plot_name}")
+
 #
 # Plot experiments.
 #
@@ -479,9 +560,10 @@ if for_paper:
     prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
     prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
     prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
+    prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
 else:
     plot_exp_1(plot_name, prepare_data_1(None, None))
     plot_exp_2(plot_name, prepare_data_1(None, None))
     prepare_and_plot_exp_3(plot_name, None, None, None)
     prepare_and_plot_exp_4(plot_name, None, None)
-    prepare_and_plot_exp_6(plot_name, None, None)
+    prepare_and_plot_exp_7(plot_name, None, None)

@@ -4,6 +4,7 @@
 
 #include "multi_engine/benchmark.h"
 #include "single_engine/benchmark.h"
+#include "single_engine/benchmark_page_faults.h"
 
 void register_benchmarks() {
   // Setup.
@@ -132,6 +133,25 @@ void register_benchmarks() {
               multi_engine::BM_MultipleEngine_DeCompress,
               static_cast<int>(compression_mode), mem_size, job_n, source_buff);
         }
+      }
+
+      for (const auto pf_scenario :
+           {page_faults::kMajorPageFaults, page_faults::kMinorPageFaults,
+            page_faults::kAtsMiss, page_faults::kNoFaults}) {
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineMinorPageFault_Compress_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                "_pfscenario_" + std::to_string(pf_scenario),
+            page_faults::BM_SingleEngineMinorPageFault_Compress,
+            static_cast<int>(pf_scenario), mem_size, source_buff);
+        benchmark::RegisterBenchmark(
+            "BM_SingleEngineMinorPageFault_DeCompress_" +
+                std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
+                std::to_string(entropy) + "_" + std::to_string(true_entropy) +
+                "_pfscenario_" + std::to_string(pf_scenario),
+            page_faults::BM_SingleEngineMinorPageFault_DeCompress,
+            static_cast<int>(pf_scenario), mem_size, source_buff);
       }
     }
   }
