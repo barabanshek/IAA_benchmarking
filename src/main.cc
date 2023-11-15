@@ -13,8 +13,6 @@ void register_benchmarks() {
   const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 * kMB,
                                                16 * kMB,  1 * kMB,   256 * kkB,
                                                64 * kkB,  4 * kkB};
-  //   const std::vector<uint16_t> kEntropyList = {400};
-  //   const std::vector<size_t> kMemorySizeList = {512 * kMB};
 
   // Register memory.
   static std::map<std::tuple<uint16_t, size_t>, std::tuple<uint8_t *, double>>
