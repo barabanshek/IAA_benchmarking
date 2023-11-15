@@ -12,7 +12,6 @@
 #include <benchmark/benchmark.h>
 
 #include "../util.h"
-#include "iaa_utils.h"
 #include "qpl_canned.h"
 #include "qpl_compress_decompress.h"
 
@@ -23,6 +22,12 @@ enum PageFaultScenario {
   kMinorPageFaults,
   kAtsMiss,
   kNoFaults
+};
+
+enum FullSystemMode {
+  kBenchmarkDiskRead,
+  kBenchmarkDecompress,
+  kBenchmarkDecompressFromFile,
 };
 
 /// Re-mmap memory @param buff from a file to allow major page faults later (if
@@ -293,6 +298,130 @@ err:
   // free(compressed_buff);
   munmap(decompressed_buff, mem_size);
 };
+
+static int prepare_compressed_files(uint8_t *src, size_t src_size,
+                                    const char *filename) {
+  // Compress.
+  uint32_t last_bit_offset = 0;
+  auto compressed_buff = reinterpret_cast<uint8_t *>(malloc(src_size));
+  size_t compressed_size = 0;
+  if (single_engine::compress(qpl_path_hardware, qpl_default_level,
+                              single_engine::kModeDynamic, nullptr,
+                              &last_bit_offset, src, src_size, compressed_buff,
+                              &compressed_size)) {
+    LOG(WARNING) << "Failed to compress memory.";
+    return -1;
+  }
+
+  // Write to file.
+  int fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0x666);
+  if (fd == -1) {
+    LOG(WARNING) << "Failed to open file.";
+    return -1;
+  }
+
+  size_t s = write(fd, compressed_buff, compressed_size);
+  if (s != compressed_size) {
+    LOG(WARNING) << "Failed to write pf file.";
+    return -1;
+  }
+  fsync(fd);
+  close(fd);
+
+  free(compressed_buff);
+  return 0;
+}
+
+auto BM_FullSystem = [](benchmark::State &state, auto Inputs...) {
+  va_list args;
+  va_start(args, Inputs);
+  auto mode = Inputs;
+  auto decompression_expected_size = va_arg(args, size_t);
+  auto filename = va_arg(args, char *);
+
+  // Drop page cache.
+  if (system((std::string("sudo dd of=") + filename +
+              " oflag=nocache conv=notrunc,fdatasync count=0")
+                 .c_str())) {
+    LOG(WARNING) << "Failed to drop caches.";
+    return -1;
+  }
+
+  // Open file.
+  int fd = open(filename, O_RDWR);
+  if (fd == -1) {
+    LOG(WARNING) << "Failed to open file.";
+    return -1;
+  }
+  size_t mem_size = lseek(fd, 0L, SEEK_END);
+  lseek(fd, 0L, SEEK_SET);
+
+  state.counters["File Size"] = mem_size;
+
+  // Allocate memory.
+  uint8_t *mem_buff = nullptr;
+  if (static_cast<FullSystemMode>(mode) == kBenchmarkDiskRead) {
+    // Just mmap.
+    mem_buff = reinterpret_cast<uint8_t *>(
+        mmap(nullptr, mem_size, PROT_READ | PROT_WRITE,
+             MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE, -1, 0));
+  }
+  if (static_cast<FullSystemMode>(mode) == kBenchmarkDecompress) {
+    // Mmap and read.
+    mem_buff = reinterpret_cast<uint8_t *>(
+        mmap(nullptr, mem_size, PROT_READ | PROT_WRITE,
+             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    size_t res = read(fd, mem_buff, mem_size);
+    if (res != mem_size) {
+      LOG(WARNING) << "Failed to read file";
+      return -1;
+    }
+  }
+  if (static_cast<FullSystemMode>(mode) == kBenchmarkDecompressFromFile) {
+    // Mmap file.
+    mem_buff = reinterpret_cast<uint8_t *>(
+        mmap(nullptr, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+  }
+
+  // Benchmark.
+  if (static_cast<FullSystemMode>(mode) == kBenchmarkDiskRead) {
+    // Benchmark read file.
+    for (auto _ : state) {
+      size_t res = read(fd, mem_buff, mem_size);
+      if (res != mem_size) {
+        LOG(WARNING) << "Failed to read file";
+        continue;
+      }
+    }
+  }
+  if (static_cast<FullSystemMode>(mode) == kBenchmarkDecompress ||
+      static_cast<FullSystemMode>(mode) == kBenchmarkDecompressFromFile) {
+    auto decompressed_buff =
+        reinterpret_cast<uint8_t *>(malloc(decompression_expected_size));
+    memset(decompressed_buff, 1, decompression_expected_size);
+    size_t decompression_size = 0;
+    for (auto _ : state) {
+      if (single_engine::decompress(
+              qpl_path_hardware, single_engine::kModeDynamic, nullptr, 0,
+              mem_buff, mem_size, decompressed_buff,
+              decompression_expected_size, &decompression_size)) {
+        LOG(WARNING) << "Failed to decompress.";
+        continue;
+      }
+    }
+
+    free(decompressed_buff);
+    if (decompression_size != decompression_expected_size) {
+      LOG(FATAL) << "Data missmatch: " << mem_size << "|"
+                 << decompression_expected_size;
+    }
+  }
+
+  munmap(mem_buff, mem_size);
+  close(fd);
+  return 0;
+};
+
 } // namespace page_faults
 
 #endif

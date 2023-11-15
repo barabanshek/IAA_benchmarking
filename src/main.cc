@@ -8,16 +8,21 @@
 
 void register_benchmarks() {
   // Setup.
-  const std::vector<uint16_t> kEntropyList = {1,   5,   10,  25, 50,
-                                              150, 200, 300, 400};
-  const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 * kMB,
-                                               16 * kMB,  1 * kMB,   256 * kkB,
-                                               64 * kkB,  4 * kkB};
+  //   const std::vector<uint16_t> kEntropyList = {1,   5,   10,  25, 50,
+  //                                               150, 200, 300, 400};
+  const std::vector<uint16_t> kEntropyList = {400};
+  //   const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 *
+  //   kMB,
+  //                                                16 * kMB,  1 * kMB,   256 *
+  //                                                kkB, 64 * kkB,  4 * kkB};
+  const std::vector<size_t> kMemorySizeList = {
+      512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB, 1 * kMB, 256 * kkB, 64 * kkB};
 
   // Register memory.
   static std::map<std::tuple<uint16_t, size_t>, std::tuple<uint8_t *, double>>
       source_buffs;
   static std::map<uint16_t, qpl_huffman_table_t> huffman_tables;
+  static std::map<size_t, std::string> compressed_filenames;
   for (const auto entropy : kEntropyList) {
     for (const size_t &mem_size : kMemorySizeList) {
       uint8_t *source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
@@ -76,18 +81,6 @@ void register_benchmarks() {
               huffman_tables[entropy]);
         }
       }
-
-      // for (const auto compression_level : {qpl_level_1, qpl_level_3}) {
-      //   benchmark::RegisterBenchmark(
-      //       "BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_" +
-      //           std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
-      //           std::to_string(entropy) + "_" + std::to_string(true_entropy)
-      //           +
-      //           "_level_" + std::to_string(compression_level),
-      //       single_engine::
-      //           BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress,
-      //       compression_level, mem_size, source_buff);
-      // }
 
       for (const auto compression_mode :
            {single_engine_canned::kContinious, single_engine_canned::kNaive,
@@ -153,6 +146,29 @@ void register_benchmarks() {
             page_faults::BM_SingleEngineMinorPageFault_DeCompress,
             static_cast<int>(pf_scenario), mem_size, source_buff);
       }
+    }
+  }
+
+  // Register full-system benchmarks.
+  for (const size_t &mem_size : kMemorySizeList) {
+    auto entropy = kEntropyList.back();
+    auto source_buff =
+        std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
+    compressed_filenames[mem_size] =
+        std::string("compressfile_") + std::to_string(mem_size) + ".dat";
+    if (page_faults::prepare_compressed_files(
+            source_buff, mem_size, compressed_filenames[mem_size].c_str())) {
+      LOG(FATAL) << "Failed to create prepare compressed files.";
+    }
+
+    for (auto mode :
+         {page_faults::kBenchmarkDiskRead, page_faults::kBenchmarkDecompress,
+          page_faults::kBenchmarkDecompressFromFile}) {
+      benchmark::RegisterBenchmark(
+          "BM_FullSystem_" + std::to_string(mem_size / kkB) + "kB" + "_mode_" +
+              std::to_string(mode),
+          page_faults::BM_FullSystem, static_cast<int>(mode), mem_size,
+          compressed_filenames[mem_size].c_str());
     }
   }
 }

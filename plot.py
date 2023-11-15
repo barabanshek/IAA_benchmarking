@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 
+from matplotlib.ticker import FormatStrFormatter
+
 # Check if the script has the right number of arguments
 if len(sys.argv) != 3:
     print("Usage: python script.py path_to_csv x_column y_column")
@@ -551,6 +553,51 @@ def prepare_and_plot_exp_7(plot_name, size_filer, entropy_filter):
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
+def prepare_and_plot_exp_8(plot_name, size_filer, entropy_filter):
+    r = r'BM_FullSystem_([0-9]*)kB_mode_(.*)_mean'
+    data = {}
+    modes = ['Disk Read', 'Decompress', 'Disk Read + Decompress']
+    for index, row in df.iterrows():
+        re_name = re.match(r, row['name'])
+        if re_name == None:
+            continue
+        size = (int)(re_name.group(1))
+        if not size_filer == None and not size in size_filer:
+            continue
+        mode = (int)(re_name.group(2))
+
+        time_ms = row['real_time'] / time_ns_to_ms
+        file_size = (int)(row['File Size'])
+
+        if not mode in data:
+            data[mode] = {}
+
+        data[mode][file_size] = (file_size/time_ms) * 1000 / (1024 * 1024)
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 3.5))
+    for (mode, mode_v), mode_name, c, l in zip(data.items(), modes, ['black', 'black', 'darkred'], ['--', '-', '-']):
+        df_raw = pd.DataFrame.from_dict(mode_v, orient='index', columns=['Bandwidth'])
+        df_raw.reset_index(inplace=True)
+        df_raw.rename(columns={'index': 'Key'}, inplace=True)
+        df_raw.sort_values('Key', inplace=True)
+
+        x_positions = [t for t in range(len(df_raw))]
+        ax.plot(x_positions, df_raw['Bandwidth'], color=c, marker='o', label=mode_name, linestyle=l, linewidth=2)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(['{:.2f}'.format(float(x) / (1024 * 1024)) for x in df_raw['Key']], fontsize=text_size_medium, rotation=0)
+
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+    ax.set_ylabel('Bandwidth, MB/s', fontsize=text_size_big)
+    ax.set_xlabel('Compressed data size, MB', fontsize=text_size_big)
+    ax.grid()
+    ax.legend(fontsize=text_size_small, loc='upper left')
+
+    for r in ['png', 'pdf']:
+        plot_name = f'{plot_name}_#{8}.{r}'
+        fig.tight_layout(pad=2.0)
+        plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
+        print(f"Plot saved in {plot_name}")
+
 #
 # Plot experiments.
 #
@@ -561,9 +608,11 @@ if for_paper:
     prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
     prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
     prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
+    prepare_and_plot_exp_8(plot_name, None, None)
 else:
     plot_exp_1(plot_name, prepare_data_1(None, None))
     plot_exp_2(plot_name, prepare_data_1(None, None))
     prepare_and_plot_exp_3(plot_name, None, None, None)
     prepare_and_plot_exp_4(plot_name, None, None)
     prepare_and_plot_exp_7(plot_name, None, None)
+    prepare_and_plot_exp_8(plot_name, None, None)
