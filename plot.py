@@ -602,12 +602,12 @@ def prepare_and_plot_exp_8(plot_name, size_filer, entropy_filter):
 # Plot experiments.
 #
 if for_paper:
-    # plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
-    # plot_exp_2(plot_name, prepare_data_1([256, 4], None))
-    # prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
-    # prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
-    # prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
-    # prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
+    plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
+    plot_exp_2(plot_name, prepare_data_1([256, 4], None))
+    prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
+    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
+    prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
+    prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
     prepare_and_plot_exp_8(plot_name, None, None)
 else:
     plot_exp_1(plot_name, prepare_data_1(None, None))
