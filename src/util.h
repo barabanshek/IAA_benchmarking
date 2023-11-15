@@ -5,17 +5,23 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <random>
 #include <vector>
 
-#include <benchmark/benchmark.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "qpl/qpl.h"
+#include <benchmark/benchmark.h>
 
+// Some nice constants.
 static constexpr uint64_t kkB = 1024;
 static constexpr uint64_t kMB = 1024 * 1024;
 
-// Measure time.
+//
+/// Measure time.
+//
 class TimeScope {
 public:
   TimeScope() { start_tick = std::chrono::high_resolution_clock::now(); }
@@ -30,10 +36,49 @@ private:
   std::chrono::time_point<std::chrono::high_resolution_clock> start_tick;
 };
 
+//
+/// Memory allocators.
+//
+class MMapDeleter {
+public:
+  void operator()(void *ptr) const {
+    if (ptr != nullptr)
+      munmap(ptr, size_);
+  }
+
+  void set_size(size_t size) { size_ = size; }
+
+private:
+  size_t size_ = 0;
+};
+
+class MallocDeleter {
+public:
+  void operator()(void *ptr) const {
+    if (ptr != nullptr)
+      free(ptr);
+  }
+};
+
+std::unique_ptr<uint8_t, MMapDeleter> mmap_allocate(size_t size) {
+  uint8_t *ptr =
+      reinterpret_cast<uint8_t *>(mmap(nullptr, size, PROT_READ | PROT_WRITE,
+                                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+  std::unique_ptr<uint8_t, MMapDeleter> unique_ptr(ptr);
+  unique_ptr.get_deleter().set_size(size);
+  return unique_ptr;
+}
+
+std::unique_ptr<uint8_t, MallocDeleter> malloc_allocate(size_t size) {
+  return std::unique_ptr<uint8_t, MallocDeleter>(
+      reinterpret_cast<uint8_t *>(malloc(size)));
+}
+
 // Initialize all supported counters with zero.
 void zero_initialize_counters(benchmark::State &state) {
   state.counters["Compression Time"] = 0;
   state.counters["Compression Ratio"] = 0;
+  state.counters["File Size"] = 0;
   state.counters["Status"] = -1;
 }
 
@@ -116,6 +161,54 @@ int create_static_huffman_tables(qpl_path_t e_path,
   }
 
   return 0;
+}
+
+/// Re-mmap memory @param buff from a file to allow major page faults later (if
+/// @param prefault = false).
+static std::unique_ptr<uint8_t, MMapDeleter>
+remmap_memory_through_file(uint8_t *buff, size_t size, const char *filename,
+                           bool drop_cache, bool prefault) {
+  // Dump source buffer to file for major page faults.
+  int fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0x666);
+  if (fd == -1) {
+    LOG(WARNING) << "Failed to open file.";
+    return std::unique_ptr<uint8_t, MMapDeleter>(nullptr);
+  }
+  ssize_t s = write(fd, buff, size);
+  if (s == -1 || static_cast<size_t>(s) != size) {
+    LOG(WARNING) << "Failed to write pf file.";
+    return std::unique_ptr<uint8_t, MMapDeleter>(nullptr);
+  }
+  fsync(fd);
+  close(fd);
+
+  // Drop caches.
+  if (drop_cache) {
+    if (system((std::string("sudo dd of=") + filename +
+                " oflag=nocache conv=notrunc,fdatasync count=0")
+                   .c_str())) {
+      LOG(WARNING) << "Failed to drop caches.";
+      return std::unique_ptr<uint8_t, MMapDeleter>(nullptr);
+    }
+  }
+
+  // Map the file to do major page faults.
+  fd = open(filename, O_RDWR);
+  if (fd == -1) {
+    LOG(WARNING) << "Failed to open file.";
+    return std::unique_ptr<uint8_t, MMapDeleter>(nullptr);
+  }
+  uint8_t *ptr = reinterpret_cast<uint8_t *>(
+      mmap(nullptr, size, PROT_READ | PROT_WRITE,
+           prefault ? (MAP_SHARED | MAP_POPULATE) : MAP_SHARED, fd, 0));
+  if (ptr == nullptr) {
+    LOG(WARNING) << "Failed to map file.";
+    return std::unique_ptr<uint8_t, MMapDeleter>(nullptr);
+  }
+
+  std::unique_ptr<uint8_t, MMapDeleter> unique_ptr(ptr);
+  unique_ptr.get_deleter().set_size(size);
+  return unique_ptr;
 }
 
 #endif

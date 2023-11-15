@@ -8,15 +8,13 @@
 
 void register_benchmarks() {
   // Setup.
-  //   const std::vector<uint16_t> kEntropyList = {1,   5,   10,  25, 50,
-  //                                               150, 200, 300, 400};
-  const std::vector<uint16_t> kEntropyList = {400};
-  //   const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 *
-  //   kMB,
-  //                                                16 * kMB,  1 * kMB,   256 *
-  //                                                kkB, 64 * kkB,  4 * kkB};
-  const std::vector<size_t> kMemorySizeList = {
-      512 * kMB, 256 * kMB, 64 * kMB, 16 * kMB, 1 * kMB, 256 * kkB, 64 * kkB};
+  const std::vector<uint16_t> kEntropyList = {1,   5,   10,  25, 50,
+                                              150, 200, 300, 400};
+  const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 * kMB,
+                                               16 * kMB,  1 * kMB,   256 * kkB,
+                                               64 * kkB,  4 * kkB};
+  //   const std::vector<uint16_t> kEntropyList = {400};
+  //   const std::vector<size_t> kMemorySizeList = {512 * kMB};
 
   // Register memory.
   static std::map<std::tuple<uint16_t, size_t>, std::tuple<uint8_t *, double>>
@@ -56,7 +54,6 @@ void register_benchmarks() {
         for (const auto compression_mode :
              {single_engine::kModeFixed, single_engine::kModeDynamic,
               single_engine::kModeStatic}) {
-          // Compress.
           benchmark::RegisterBenchmark(
               "BM_SingleEngineBlocking_Compress_" +
                   std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
@@ -67,8 +64,6 @@ void register_benchmarks() {
               single_engine::BM_SingleEngineBlocking_Compress, execution_path,
               static_cast<int>(compression_mode), mem_size, source_buff,
               huffman_tables[entropy]);
-
-          // Decompress.
           benchmark::RegisterBenchmark(
               "BM_SingleEngineBlocking_DeCompress_" +
                   std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
@@ -85,8 +80,6 @@ void register_benchmarks() {
       for (const auto compression_mode :
            {single_engine_canned::kContinious, single_engine_canned::kNaive,
             single_engine_canned::kCanned}) {
-
-        // Compress.
         benchmark::RegisterBenchmark(
             "BM_SingleEngineBlocking_Compress_Canned_" +
                 std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
@@ -94,8 +87,6 @@ void register_benchmarks() {
                 "_mode_" + std::to_string(compression_mode),
             single_engine::BM_SingleEngineBlocking_CompressCanned,
             static_cast<int>(compression_mode), mem_size, source_buff);
-
-        // Decompress.
         benchmark::RegisterBenchmark(
             "BM_SingleEngineBlocking_DeCompress_Canned_" +
                 std::to_string(mem_size / kkB) + "kB" + "_entropy_" +

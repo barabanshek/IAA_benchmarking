@@ -126,7 +126,8 @@ int compress(qpl_path_t e_path, qpl_compression_levels level,
     return -1;
   }
   *dst_size = job->total_out;
-  *last_bit_offset = job->last_bit_offset;
+  if (mode == kModeHuffmanOnly)
+    *last_bit_offset = job->last_bit_offset;
 
   if (free_qpl(job)) {
     LOG(WARNING) << "Failed to free resources.";

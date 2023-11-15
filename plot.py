@@ -37,7 +37,7 @@ except pd.errors.ParserError:
     sys.exit(1)
 
 def prepare_data_1(size_filer, entropy_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_(qpl.*)'
+    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_(qpl.*)_mean'
     compress_data = {}
     decompress_data = {}
     for index, row in df.iterrows():
@@ -214,7 +214,7 @@ def plot_exp_2(plot_name, data):
         print(f"Plot saved in {plot_name}")
 
 def prepare_and_plot_exp_3(plot_name, size_filer, entropy_filter, entropy_filter_text):
-    r = r'BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_([0-9]*)kB_entropy_(.*)_(.*)_level_([0-9])'
+    r = r'BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_([0-9]*)kB_entropy_(.*)_(.*)_level_([0-9])_mean'
     data = {}
     compression_levels = []
     for index, row in df.iterrows():
@@ -384,15 +384,15 @@ def prepare_and_plot_exp_4_5(exp, r, plot_name, size_filer, entropy_filter, mode
         print(f"Plot saved in {plot_name}")
 
 def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_qpl_path_hardware'
+    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_qpl_path_hardware_mean'
     prepare_and_plot_exp_4_5(4, r, plot_name, size_filer, entropy_filter, ['Fixed Block', 'Dynamic Block', 'Static Block'])
 
 def prepare_and_plot_exp_5(plot_name, size_filer, entropy_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)'
+    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_mean'
     prepare_and_plot_exp_4_5(5, r, plot_name, size_filer, entropy_filter, ['Continious \nbaseline', 'Naive Dynamic \nBlock', 'Canned'])
 
 def prepare_and_plot_exp_6(plot_name, size_filer, entropy_filter):
-    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_jobs_(.*)_mode_(.*)'
+    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_jobs_(.*)_mode_(.*)_mean'
     data = {}
     modes = []
     for index, row in df.iterrows():
@@ -473,7 +473,7 @@ def prepare_and_plot_exp_6(plot_name, size_filer, entropy_filter):
         print(f"Plot saved in {plot_name}")
 
 def prepare_and_plot_exp_7(plot_name, size_filer, entropy_filter):
-    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_pfscenario_(.*)'
+    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_pfscenario_(.*)_mean'
     data = {}
     modes = []
     pfscenarios = {0: 'Major \npf', 1: 'Minor \npf', 2: 'ATS \nmiss', 3: 'No \nfaults'}
@@ -602,12 +602,12 @@ def prepare_and_plot_exp_8(plot_name, size_filer, entropy_filter):
 # Plot experiments.
 #
 if for_paper:
-    plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
-    plot_exp_2(plot_name, prepare_data_1([256, 4], None))
-    prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
-    prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
-    prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
-    prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
+    # plot_exp_1(plot_name, prepare_data_1(None, [1, 400]))
+    # plot_exp_2(plot_name, prepare_data_1([256, 4], None))
+    # prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
+    # prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
+    # prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
+    # prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
     prepare_and_plot_exp_8(plot_name, None, None)
 else:
     plot_exp_1(plot_name, prepare_data_1(None, None))
