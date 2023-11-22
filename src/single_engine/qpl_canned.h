@@ -46,16 +46,16 @@ int free_qpl(qpl_job *job) {
 }
 
 int compress(CompressionMode mode, const uint8_t *src, size_t src_size,
-             uint8_t *dst, size_t *dst_size, size_t chunk_size) {
+             uint8_t *dst, size_t *dst_size, size_t chunk_size,
+             qpl_huffman_table_t *huffman_table) {
   auto job_buffer = init_qpl(qpl_path_hardware);
   if (job_buffer == nullptr) {
     LOG(WARNING) << "Failed to init qpl.";
     return -1;
   }
 
-  qpl_huffman_table_t huffman_table = nullptr;
   if (mode == kCanned) {
-    if (create_static_huffman_tables(qpl_path_hardware, &huffman_table, src,
+    if (create_static_huffman_tables(qpl_path_hardware, huffman_table, src,
                                      src_size)) {
       LOG(WARNING) << "Failed to create huffman tables.";
       return -1;
@@ -84,7 +84,8 @@ int compress(CompressionMode mode, const uint8_t *src, size_t src_size,
       job->flags |= QPL_FLAG_DYNAMIC_HUFFMAN;
       job->huffman_table = nullptr;
     } else if (mode == kCanned) {
-      job->huffman_table = huffman_table;
+      // job->flags |= QPL_FLAG_CANNED_MODE;
+      job->huffman_table = *huffman_table;
     }
 
     // Perform scattered chunk compression.
@@ -123,7 +124,8 @@ int compress(CompressionMode mode, const uint8_t *src, size_t src_size,
 }
 
 int decompress(uint8_t *src, size_t src_size, uint8_t *dst,
-               size_t dst_reserved_size, size_t *dst_actual_size) {
+               size_t dst_reserved_size, size_t *dst_actual_size,
+               qpl_huffman_table_t huffman_table) {
   auto job_buffer = init_qpl(qpl_path_hardware);
   if (job_buffer == nullptr) {
     LOG(WARNING) << "Failed to init qpl.";
@@ -137,7 +139,8 @@ int decompress(uint8_t *src, size_t src_size, uint8_t *dst,
   job->available_in = src_size;
   job->next_out_ptr = dst;
   job->available_out = dst_reserved_size;
-  job->flags = QPL_FLAG_FIRST | QPL_FLAG_LAST;
+  job->flags = QPL_FLAG_FIRST | QPL_FLAG_LAST; // | QPL_FLAG_CANNED_MODE;
+  job->huffman_table = huffman_table;
 
   qpl_status status = qpl_execute_job(job);
   if (status != QPL_STS_OK) {

@@ -189,12 +189,13 @@ auto BM_SingleEngineBlocking_CompressCanned = [](benchmark::State &state,
 
   // Benchmark compress.
   size_t compressed_size = 0;
+  qpl_huffman_table_t huffman_tables;
   for (auto _ : state) {
     if (single_engine_canned::compress(
             static_cast<single_engine_canned::CompressionMode>(
                 compression_mode),
             source_buff, mem_size, compressed_buff.get(), &compressed_size,
-            chunk_size))
+            chunk_size, &huffman_tables))
       state.SkipWithMessage("Failed to compress.");
   }
   state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
@@ -204,7 +205,7 @@ auto BM_SingleEngineBlocking_CompressCanned = [](benchmark::State &state,
   size_t decompression_size = 0;
   if (single_engine_canned::decompress(compressed_buff.get(), compressed_size,
                                        decompressed_buff.get(), mem_size,
-                                       &decompression_size))
+                                       &decompression_size, huffman_tables))
     state.SkipWithMessage("Failed to decompress.");
 
   if (decompression_size != mem_size ||
@@ -233,10 +234,11 @@ auto BM_SingleEngineBlocking_DeCompressCanned = [](benchmark::State &state,
 
   // Compress for verification.
   size_t compressed_size = 0;
+  qpl_huffman_table_t huffman_tables;
   if (single_engine_canned::compress(
           static_cast<single_engine_canned::CompressionMode>(compression_mode),
           source_buff, mem_size, compressed_buff.get(), &compressed_size,
-          chunk_size))
+          chunk_size, &huffman_tables))
     state.SkipWithMessage("Failed to compress.");
 
   state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
@@ -249,7 +251,7 @@ auto BM_SingleEngineBlocking_DeCompressCanned = [](benchmark::State &state,
   for (auto _ : state) {
     if (single_engine_canned::decompress(compressed_buff.get(), compressed_size,
                                          decompressed_buff.get(), mem_size,
-                                         &decompression_size))
+                                         &decompression_size, huffman_tables))
       state.SkipWithMessage("Failed to decompress.");
   }
 

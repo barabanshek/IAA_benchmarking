@@ -13,7 +13,7 @@
 
 namespace multi_engine {
 
-enum CompressionMode { kParallelDynamic, kParallelCanned };
+enum CompressionMode { kParallelFixed, kParallelDynamic, kParallelCanned };
 
 // [<compressed_data, original_size>].
 typedef std::vector<std::tuple<std::vector<uint8_t>, size_t>> CompressedFormat;

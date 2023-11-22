@@ -38,7 +38,7 @@ except pd.errors.ParserError:
     sys.exit(1)
 
 def prepare_data_1(mode_filter, b_name_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_(qpl.*)_mean'
+    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_mode_(.)_(qpl.*)_mean'
     compress_data = {}
     decompress_data = {}
     compress_data['Software'] = {}
@@ -65,7 +65,7 @@ def prepare_data_1(mode_filter, b_name_filter):
             decompress_data['Software'][b_name] = {}
             decompress_data['Hardware'][b_name] = {}
 
-        true_entropy = re_name.group(4)
+        entropy = re_name.group(4)
         mode = re_name.group(5)
         if not (int)(mode) == mode_filter:
             continue
@@ -76,16 +76,16 @@ def prepare_data_1(mode_filter, b_name_filter):
 
         if op == 'Compress':
             if sw_hw == 'qpl_path_software':
-                compress_data['Software'][b_name] = (time_ms, compression_ratio, true_entropy, size)
+                compress_data['Software'][b_name] = (time_ms, compression_ratio, entropy, size)
             elif sw_hw == 'qpl_path_hardware':
-                compress_data['Hardware'][b_name] = (time_ms, compression_ratio, true_entropy, size)
+                compress_data['Hardware'][b_name] = (time_ms, compression_ratio, entropy, size)
             else:
                 exit(-1)
         elif op == 'DeCompress':
             if sw_hw == 'qpl_path_software':
-                decompress_data['Software'][b_name] = (time_ms, compression_ratio, true_entropy, size)
+                decompress_data['Software'][b_name] = (time_ms, compression_ratio, entropy, size)
             elif sw_hw == 'qpl_path_hardware':
-                decompress_data['Hardware'][b_name] = (time_ms, compression_ratio, true_entropy, size)
+                decompress_data['Hardware'][b_name] = (time_ms, compression_ratio, entropy, size)
             else:
                 exit(-1)
         else:
@@ -151,166 +151,25 @@ def plot_exp_1(plot_name, data, name_suffix, omit_x_labels=False):
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
-# Plot #2 - SW vs. HW, single thread, different message sizes, different entropy (another view).
-def plot_exp_2(plot_name, data):
-    compress_data, decompress_data = data
-    data_sw = {}
-    data_hw = {}
-    for entropy, v in compress_data.items():
-        for size, v_data in v.items():
-            if not size in data_sw:
-                data_sw[size] = {}
-            if not size in data_hw:
-                data_hw[size] = {}
-            sw_time_ms, sw_compression_ratio, sw_true_entropy = v_data[0]
-            hw_time_ms, hw_compression_ratio, hw_true_entropy = v_data[1]
-            assert(sw_true_entropy == hw_true_entropy)
-
-            data_sw[size][entropy] = [
-                sw_compression_ratio, sw_time_ms, decompress_data[entropy][size][0][0], sw_true_entropy
-            ]
-
-            data_hw[size][entropy] = [
-                hw_compression_ratio, hw_time_ms, decompress_data[entropy][size][1][0], hw_true_entropy
-            ]
-
-    fig, axs = plt.subplots(2, len(data_sw), figsize=(6 * len(data_sw), 6))
-    for axes, data, text, idx_x in zip(axs, [data_sw, data_hw], ['Software', 'Hardware'], [0, 1]):
-        for ax, (size, entropy_v), idx_y in zip(axes, data.items(), range(len(data))):
-            df = pd.DataFrame.from_dict(entropy_v, orient='index', columns=['Compression ratio', 'Compression time, ms', 'Decompression time, ms', 'True entropy'])
-            df.reset_index(inplace=True)
-            df.rename(columns={'index': 'Key'}, inplace=True)
-            df.sort_values('Key', inplace=True)
-
-            ax_1 = ax.twinx()
-
-            width = 0.43
-            x_positions = range(len(df))
-            ax.bar(x_positions, df['Compression ratio'], width, label='Software', align='center', color='gray')
-            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
-            ax.set_xticks([p + width / 2 for p in range(len(df))])
-            ax.set_xticklabels(['{:.2f}'.format(1 * float(x)) for x in df['True entropy']], fontsize=text_size_medium, rotation=45)
-            if idx_x == 1:
-                ax.set_xlabel('Shannon entropy', fontsize=text_size_big)
-            if idx_x == 0:
-                ax.set_title(f'Data size: {size}kB', fontsize=text_size_big)
-            ax.grid()
-            # ax.set_yscale('log')
-            if idx_y == 0:
-                ax.set_ylabel(f'Compression \n ratio', fontsize=text_size_big)
-            if idx_y == 1:
-                ax_1.set_ylabel("Time, ms", fontsize=text_size_big)
-
-            ax_1.plot(x_positions, df['Compression time, ms'], label='Compression time', color='black', marker='o')
-            ax_1.plot(x_positions, df['Decompression time, ms'], label='Decompression time', color='darkred', marker='o')
-            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
-            if idx_x == 0 and idx_y == 0:
-                ax_1.legend(fontsize=text_size_small)
-
-    for r in ['png', 'pdf']:
-        plot_name = f'{plot_name}_#2.{r}'
-        fig.tight_layout(pad=2.0)
-        plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
-        print(f"Plot saved in {plot_name}")
-
-def prepare_and_plot_exp_3(plot_name, size_filer, entropy_filter, entropy_filter_text):
-    r = r'BM_SingleEngineBlocking_SoftwareCompress_HardwareDecompress_([0-9]*)kB_entropy_(.*)_(.*)_level_([0-9])_mean'
-    data = {}
-    compression_levels = []
-    for index, row in df.iterrows():
-        re_name = re.match(r, row['name'])
-        if re_name == None:
-            continue
-
-        size = (int)(re_name.group(1))
-        if not size_filer == None and not size in size_filer:
-            continue
-
-        entropy = (int)(re_name.group(2))
-        if not entropy_filter == None and not entropy in entropy_filter:
-            continue
-
-        compression_level = (int)(re_name.group(4))
-        compression_ratio = row['Compression Ratio']
-        compression_time = row['Compression Time'] / time_us_to_ms
-        decompression_time = row['real_time'] / time_ns_to_ms
-
-        if not compression_level in compression_levels:
-            compression_levels.append(compression_level)
-        if not entropy in data:
-            data[entropy] = {}
-        if not size in data[entropy]:
-            data[entropy][size] = {}
-        data[entropy][size][compression_level] = [compression_ratio, compression_time, decompression_time]
-
-    # plot.
-    fig, axs = plt.subplots(1, len(data), figsize=(6 * len(data), 4))
-    for (entropy, entropy_v), ax, idx in zip(data.items(), axs, range(len(data))):
-        ax_1 = ax.twinx()
-
-        o = 0
-        plots = []
-        for c_lvl, hatch_pattern in zip(compression_levels, ['', 'x']):
-            new_dict = {}
-            for k, v in entropy_v.items():
-                new_dict[k] = v[c_lvl]
-            df_raw = pd.DataFrame.from_dict(new_dict, orient='index', columns=['Compression ratio', 'Compression time', 'Decompression time'])
-            df_raw.reset_index(inplace=True)
-            df_raw.rename(columns={'index': 'Key'}, inplace=True)
-            df_raw.sort_values('Key', inplace=True)
-
-            width = 0.15
-            x_positions = range(len(df_raw))
-            pl = ax.bar([p + o for p in x_positions], df_raw['Compression ratio'], width, align='center', color='gray', label=f'Compr. ratio, level {c_lvl}', hatch=hatch_pattern)
-            plots.append(pl)
-            pl = ax_1.bar([p + o + width for p in x_positions], df_raw['Decompression time'], width, align='center', color='darkred', label=f'Decompr. time, level {c_lvl}', hatch=hatch_pattern)
-            plots.append(pl)
-            ax.set_xticks([p + width for p in range(len(df_raw))])
-            ax.set_xticklabels(df_raw['Key'].astype(str), fontsize=text_size_medium)
-            if not entropy_filter == None:
-                ax.set_title(f'Entropy: {entropy_filter_text[idx]}', fontsize=text_size_big)
-            else:
-                ax.set_title(f'Entropy: {entropy}', fontsize=text_size_big)
-            ax.set_xlabel('Data size, kB', fontsize=text_size_big)
-            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
-            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
-
-            if idx == 0:
-                ax.set_ylabel('Compression ratio', fontsize=text_size_big)
-            if idx == len(data) - 1:
-                ax_1.set_ylabel('Decompression time, \n ms', fontsize=text_size_big)
-
-            o += 2 * width
-
-        ax.grid()
-        # ax_1.grid()
-
-        # TODO: fix it
-        # if idx == 0:
-            # labs = [l.get_label() for l in plots]
-            # ax.legend(plots, labs, ncol=2, bbox_to_anchor=(0.3, 1.3), fontsize=text_size_small)
-
-    for r in ['png', 'pdf']:
-        plot_name = f'{plot_name}_#3.{r}'
-        fig.tight_layout(pad=2.0)
-        plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
-        print(f"Plot saved in {plot_name}")
-
-def prepare_and_plot_exp_4_5(exp, r, plot_name, size_filer, entropy_filter, mode_names):
+def prepare_and_plot_exp_2(plot_name, b_name_filter):
+    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_name_(.*)_entropy_(.*)_mode_(.)_mean'
     data = {}
     modes = []
+    mode_names = ['Continious\nbaseline', 'Naive', 'Canned']
     for index, row in df.iterrows():
         re_name = re.match(r, row['name'])
         if re_name == None:
             continue
+
         op = re_name.group(1)
         size = (int)(re_name.group(2))
-        if not size_filer == None and not size in size_filer:
+
+        b_name = re_name.group(3)
+        b_name = b_name.replace('dataset/silesia_tmp/', '')
+        if not b_name_filter == None and not b_name in b_name_filter:
             continue
-        entropy = (int)(re_name.group(3))
-        if not entropy_filter == None and not entropy in entropy_filter:
-            continue
-        true_entropy = re_name.group(4)
+
+        entropy = re_name.group(4)
         mode = re_name.group(5)
         if not mode in modes:
             modes.append(mode)
@@ -318,156 +177,137 @@ def prepare_and_plot_exp_4_5(exp, r, plot_name, size_filer, entropy_filter, mode
         time_ms = row['real_time'] / time_ns_to_ms
         compression_ratio = row['Compression Ratio']
 
-        if not entropy in data:
-            data[entropy] = {}
-        if not size in data[entropy]:
-            data[entropy][size] = {}
-        if not mode in data[entropy][size]:
-            data[entropy][size][mode] = [compression_ratio, true_entropy, 0, 0]
+        if not b_name in data:
+            data[b_name] = {}
+
+        if not mode in data[b_name]:
+            data[b_name][mode] = [compression_ratio, entropy, 0, 0, size]
 
         if op == 'Compress':
-            data[entropy][size][mode][2] = time_ms
+            data[b_name][mode][2] = time_ms
         elif op == 'DeCompress':
-            data[entropy][size][mode][3] = time_ms
+            data[b_name][mode][3] = time_ms
         else:
             exit(0)
 
     # plot.
-    L = len(list(data.values())[0])
-    fig, axs = plt.subplots(len(data), L, figsize=(7 * len(data), 3.5 * L))
-    axs = np.transpose(axs)
-    for (entropy, entropy_v), ax_s, idx in zip(data.items(), axs, range(len(axs))):
-        for (size, size_v), ax, idx_y in zip(entropy_v.items(), ax_s, range(len(ax_s))):
-            true_entropy = float(list(size_v.values())[0][1])
-            ax_1 = ax.twinx()
+    fig, axs = plt.subplots(1, len(data), figsize=(len(data) * 8, 4))
+    for (b_name, b_data), ax in zip(data.items(), axs):
+        b_size_kb = b_data['0'][4]
+        ax_1 = ax.twinx()
 
-            df_raw = pd.DataFrame.from_dict(size_v, orient='index', columns=['Compression ratio', 'True Entropy', 'Compression time', 'Decompression time'])
-            df_raw.reset_index(inplace=True)
-            df_raw.rename(columns={'index': 'Key'}, inplace=True)
-            df_raw.sort_values('Key', inplace=True)
-            width = 0.1
-            x_positions = [t / 2 for t in range(len(df_raw))]
-            b1 = ax.bar(x_positions, df_raw['Compression ratio'], width, align='center', label=f'Ratio', color='gray')
-            b2 = ax_1.bar([p + width for p in x_positions], df_raw['Compression time'], width, align='center', label=f'Compr. time', color='darkgoldenrod')
-            b3 = ax_1.bar([p + 2 * width for p in x_positions], df_raw['Decompression time'], width, align='center', label=f'Decompr. time', color='darkred')
-            ax.set_xticks([p + width for p in x_positions])
-            ax.set_xticklabels(mode_names, fontsize=text_size_medium, rotation=0)
-            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
-            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
-            ax.set_title('Size(MB)/ Entropy: ' + f'{size / 1024:.1f}/ {true_entropy:.5f}', fontsize=text_size_big)
+        df_raw = pd.DataFrame.from_dict(b_data, orient='index', columns=['Compression ratio', 'Entropy', 'Compression time', 'Decompression time', 'Size'])        
+        df_raw.reset_index(inplace=True)
+        df_raw.rename(columns={'index': 'Key'}, inplace=True)
+        df_raw.sort_values('Key', inplace=True)
 
-            if idx == 0:
-                ax.set_ylabel('Compression ratio', fontsize=text_size_big)
-            if idx == len(ax_s) - 1:
-                ax_1.set_ylabel('Time, ms', fontsize=text_size_big)
+        width = 0.23
+        x_positions = [t for t in range(len(df_raw))]
+        b1 = ax.bar(x_positions, df_raw['Compression ratio'], width, align='center', label=f'Ratio', color='gray')
+        b2 = ax_1.bar([p + width for p in x_positions], df_raw['Compression time'], width, align='center', label=f'Compr. time', color='darkgoldenrod')
+        b3 = ax_1.bar([p + 2 * width for p in x_positions], df_raw['Decompression time'], width, align='center', label=f'Decompr. time', color='darkred')
 
-            # Annotate.
-            def add_value_labels(bars, axis):
-                for bar in bars:
-                    height = bar.get_height()
-                    axis.text(bar.get_x() + bar.get_width() / 2., 0.6002 * height, f'{height:.1f}', ha='center', va='bottom', fontsize=text_size_big, rotation=90)
-            add_value_labels(b1, ax)
-            add_value_labels(b2, ax_1)
-            add_value_labels(b3, ax_1)
+        ax.set_xticks([p + width for p in x_positions])
+        ax.set_xticklabels(mode_names, fontsize=text_size_medium, rotation=0)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+        ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
+        ax.set_title(f'{b_name} ({(b_size_kb/4):.0f} 4kB pages)', fontsize=text_size_big)
+        ax.set_ylabel('Compression\nratio', fontsize=text_size_big)
+        ax_1.set_ylabel('Time, ms', fontsize=text_size_big)
 
-            if idx == 0 and idx_y == 0:
-                plots = [b1, b2, b3]
-                labs = [l.get_label() for l in plots]
-                # ax.legend(plots, labs, ncol=1, fontsize=text_size_small, loc='upper left')
-            ax.grid()
+        # Annotate.
+        def add_value_labels(bars, axis):
+            for bar in bars:
+                height = bar.get_height()
+                axis.text(bar.get_x() + bar.get_width() / 2., 0.6002 * height, f'{height:.1f}', ha='center', va='bottom', fontsize=text_size_big, rotation=90)
+        add_value_labels(b1, ax)
+        add_value_labels(b2, ax_1)
+        add_value_labels(b3, ax_1)
 
+            # if idx == 0 and idx_y == 0:
+            #     plots = [b1, b2, b3]
+            #     labs = [l.get_label() for l in plots]
+            #     # ax.legend(plots, labs, ncol=1, fontsize=text_size_small, loc='upper left')
+        ax.grid()
 
     for r in ['png', 'pdf']:
-        plot_name = f'{plot_name}_#{exp}.{r}'
+        plot_name = f'{plot_name}_#2.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
 
-def prepare_and_plot_exp_4(plot_name, size_filer, entropy_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_qpl_path_hardware_mean'
-    prepare_and_plot_exp_4_5(4, r, plot_name, size_filer, entropy_filter, ['Fixed Block', 'Dynamic Block', 'Static Block'])
-
-def prepare_and_plot_exp_5(plot_name, size_filer, entropy_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_entropy_(.*)_(.*)_mode_(.)_mean'
-    prepare_and_plot_exp_4_5(5, r, plot_name, size_filer, entropy_filter, ['Continious \nbaseline', 'Naive Dynamic \nBlock', 'Canned'])
-
-def prepare_and_plot_exp_6(plot_name, size_filer, entropy_filter):
-    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_entropy_(.*)_(.*)_jobs_(.*)_mode_(.*)_mean'
+def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
+    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_jobs_(.*)_mode_(.*)_mean'
     data = {}
     modes = []
+    mode_names = ['Fixed Block', 'Dynamic Block', 'Static Block']
     for index, row in df.iterrows():
         re_name = re.match(r, row['name'])
         if re_name == None:
             continue
+
         op = re_name.group(1)
         size = (int)(re_name.group(2))
-        if not size_filer == None and not size in size_filer:
+
+        b_name = re_name.group(3)
+        b_name = b_name.replace('dataset/silesia_tmp/', '')
+        if not b_name_filter == None and not b_name in b_name_filter:
             continue
-        entropy = (int)(re_name.group(3))
-        if not entropy_filter == None and not entropy in entropy_filter:
-            continue
-        true_entropy = re_name.group(4)
+
+        entropy = re_name.group(4)
 
         job_n = (int)(re_name.group(5))
-        mode = re_name.group(6)
+        mode = (int)(re_name.group(6))
+        if mode_filter and not mode in mode_filter:
+            continue
+        if not mode in modes:
+            modes.append(mode)
 
         time_ms = row['real_time'] / time_ns_to_ms
         compression_ratio = row['Compression Ratio']
 
-        if not entropy in data:
-            data[entropy] = {}
-        if not size in data[entropy]:
-            data[entropy][size] = {}
-        if not mode in data[entropy][size]:
-            data[entropy][size][mode] = {}
-        if not job_n in data[entropy][size][mode]:
-            data[entropy][size][mode][job_n] = [compression_ratio, true_entropy, 0, 0]
+        if not b_name in data:
+            data[b_name] = {}
+
+        if not mode in data[b_name]:
+            data[b_name][mode] = {}
+
+        if not job_n in data[b_name][mode]:
+            data[b_name][mode][job_n] = [compression_ratio, entropy, 0, 0]
 
         if op == 'Compress':
-            data[entropy][size][mode][job_n][2] = time_ms
+            data[b_name][mode][job_n][2] = (size / time_ms) * 1000 / (1024 * 1024)
         elif op == 'DeCompress':
-            data[entropy][size][mode][job_n][3] = time_ms
+            data[b_name][mode][job_n][3] = (size / time_ms) * 1000 / (1024 * 1024)
         else:
             exit(0)
 
-    L = len(list(data.values())[0])
-    fig, axs = plt.subplots(len(data), L, figsize=(6 * len(data), 3.5 * L))
-    # axs = np.transpose(axs)
-    for (entropy, entropy_v), ax_s, idx in zip(data.items(), axs, range(len(axs))):
-        for (size, size_v), ax, idx_y in zip(entropy_v.items(), ax_s, range(len(ax_s))):
-            ax_1 = ax.twinx()
+    fig, axs = plt.subplots(len(data), len(modes), figsize=(len(modes) * 6, len(data) * 3.5))
+    for (b_name, b_data), ax_s, id_x in zip(data.items(), axs, range(len(axs))):
+        for (m_name, m_data), ax in zip(b_data.items(), ax_s):
+            df_raw = pd.DataFrame.from_dict(m_data, orient='index', columns=['Compression ratio', 'Entropy', 'Compression time', 'Decompression time'])
+            df_raw.reset_index(inplace=True)
+            df_raw.rename(columns={'index': 'Key'}, inplace=True)
+            df_raw.sort_values('Key', inplace=True)
 
-            plots = []
-            for (mode, mode_v), mode_name, l in zip(size_v.items(), ['', ', serial Huffman'], ['-', '--']):
-                true_entropy = float(list(mode_v.values())[0][1])
-                df_raw = pd.DataFrame.from_dict(mode_v, orient='index', columns=['Compression ratio', 'True Entropy', 'Compression time', 'Decompression time'])
-                df_raw.reset_index(inplace=True)
-                df_raw.rename(columns={'index': 'Key'}, inplace=True)
-                df_raw.sort_values('Key', inplace=True)
-
-                x_positions = [t for t in range(len(df_raw))]
-                plots = plots + ax.plot(x_positions, df_raw['Compression time'], label=f'Compression time {mode_name}', color='black', marker='o', linestyle=l)
-                plots = plots + ax_1.plot(x_positions, df_raw['Decompression time'], label=f'DeCompression time {mode_name}', color='darkred', marker='o', linestyle=l)
+            x_positions = [t for t in range(len(df_raw))]
+            ax.plot(x_positions, df_raw['Compression time'], label=f'Compression', color='black', marker='o', linewidth=2)
+            ax.plot(x_positions, df_raw['Decompression time'], label=f'DeCompression', color='darkred', marker='o', linewidth=2)
 
             ax.set_xticks([p for p in x_positions])
             ax.set_xticklabels(df_raw['Key'], fontsize=text_size_medium, rotation=45)
             ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
-            ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
-            ax.set_title('Size(MB)/ Entropy: ' + f'{size / 1000:.1f}/ {true_entropy:.5f}', fontsize=text_size_big)
-            # ax.set_title('Data size: ' + f'{size / 1024:.0f}MB', fontsize=text_size_big)
-
-            ax.set_xlabel('Number of jobs', fontsize=text_size_big)
-            # if idx_y == 0:
-            ax.set_ylabel('Time, ms', fontsize=text_size_big)
+            ax.set_title(f'{b_name}/{mode_names[m_name]}', fontsize=text_size_big)
+            if id_x == 1:
+                ax.set_xlabel('Number of jobs', fontsize=text_size_big)
             ax.grid()
-            plots = plots[:3]
 
-            if idx == 0 and idx_y == 0:
-                labs = [l.get_label() for l in plots]
-                ax.legend(plots, labs, ncol=1, fontsize=text_size_small, loc='upper right')
+        ax_s[0].set_ylabel('Throughput, GB/s', fontsize=text_size_big)
+        if id_x == 0:
+            ax_s[0].legend(ncol=1, fontsize=text_size_small, loc='upper left')
 
     for r in ['png', 'pdf']:
-        plot_name = f'{plot_name}_#{6}.{r}'
+        plot_name = f'{plot_name}_#3.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name}")
@@ -619,17 +459,26 @@ def prepare_and_plot_exp_8(plot_name, size_filer, entropy_filter):
 #
 # Plot experiments.
 #
-kModeFixed = 0
-kModeDynamic = 1
-kModeHuffmanOnly = 2
-kModeStatic = 3
+def plot_figure_1():
+    kModeFixed = 0
+    kModeDynamic = 1
+    kModeHuffmanOnly = 2
+    kModeStatic = 3
 
-if for_paper:
     plot_exp_1(plot_name, prepare_data_1(kModeDynamic, None), 'Dynamic DEFLATE', omit_x_labels=True)
     plot_exp_1(plot_name + '_1', prepare_data_1(kModeFixed, None), 'Fixed DEFLATE')
-    # plot_exp_2(plot_name, prepare_data_1([256, 4], None))
-    # prepare_and_plot_exp_3(plot_name, [16384, 65536, 262144], [5, 400], ['low', 'high'])
-    # prepare_and_plot_exp_4(plot_name, [262144, 16384], [5, 200])
-    # prepare_and_plot_exp_6(plot_name, [524288, 1024], [5, 200])
-    # prepare_and_plot_exp_7(plot_name, [262144, 1024], [300, 400])
-    # prepare_and_plot_exp_8(plot_name, None, None)
+
+def plot_figure_2():
+    prepare_and_plot_exp_2(plot_name, ['xml', 'mozilla'])
+
+def plot_figure_3():
+    kParallelFixed = 0
+    kParallelDynamic = 1
+    kParallelCanned = 2
+
+    prepare_and_plot_exp_3(plot_name, ['xml', 'mozilla'], [kParallelFixed, kParallelDynamic])
+
+if for_paper:
+    # plot_figure_1()
+    # plot_figure_2()
+    plot_figure_3()
