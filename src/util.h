@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <random>
 #include <vector>
@@ -82,6 +83,25 @@ void zero_initialize_counters(benchmark::State &state) {
   state.counters["Status"] = -1;
 }
 
+/// Compute Shannon entropy.
+double compute_entropy(uint8_t *mem, size_t size) {
+  constexpr uint16_t kMaxBytes = 256;
+  std::vector<uint8_t> probablilities(kMaxBytes);
+  std::fill(probablilities.begin(), probablilities.end(), 0);
+  for (size_t i = 0; i < size; ++i) {
+    uint8_t byte = *(mem + i);
+    ++probablilities[byte];
+  }
+  double entropy = 0.0;
+  for (uint16_t i = 0; i < kMaxBytes; ++i) {
+    double temp = static_cast<double>(probablilities[i]) / size;
+    if (temp > 0.)
+      entropy += temp * std::fabs(std::log2(temp));
+  }
+
+  return entropy;
+}
+
 /// @param entropy -- when bigger, the entrpy is bigger.
 /// Returns the true Shannon entropy.
 double init_rand_memory(uint8_t *mem, size_t size, uint16_t entropy,
@@ -110,25 +130,38 @@ double init_rand_memory(uint8_t *mem, size_t size, uint16_t entropy,
     }
   }
 
-  if (return_true_entropy) {
-    // Compute Shannon entropy.
-    constexpr uint16_t kMaxBytes = 256;
-    std::vector<uint8_t> probablilities(kMaxBytes);
-    std::fill(probablilities.begin(), probablilities.end(), 0);
-    for (size_t i = 0; i < size; ++i) {
-      uint8_t byte = *(mem + i);
-      ++probablilities[byte];
-    }
-    double entropy = 0.0;
-    for (uint16_t i = 0; i < kMaxBytes; ++i) {
-      double temp = static_cast<double>(probablilities[i]) / size;
-      if (temp > 0.)
-        entropy += temp * std::fabs(std::log2(temp));
-    }
-
-    return entropy;
-  } else
+  if (return_true_entropy)
+    return compute_entropy(mem, size);
+  else
     return 0;
+}
+
+typedef std::vector<std::tuple<size_t, std::string, double, uint8_t *>>
+    CompressionDataset;
+CompressionDataset load_corpus_dataset(const char *dataset_path) {
+  assert(std::filesystem::exists(dataset_path) &&
+         std::filesystem::is_directory(dataset_path));
+  LOG(INFO) << "Loading dataset from " << dataset_path;
+  CompressionDataset dataset;
+  for (const auto &entry : std::filesystem::directory_iterator(dataset_path)) {
+    std::string filename = entry.path().filename();
+    filename = std::string(dataset_path) + "/" + filename;
+    int fd = open(filename.c_str(), O_RDONLY);
+    if (fd == -1)
+      LOG(FATAL) << "failed to open benchmark file " << filename << ", "
+                 << strerror(errno);
+    size_t fd_size = static_cast<size_t>(lseek(fd, 0L, SEEK_END));
+    lseek(fd, 0L, SEEK_SET);
+    LOG(INFO) << "Found file: " << filename << " of size: " << fd_size << " B";
+    uint8_t *mem = reinterpret_cast<uint8_t *>(malloc(fd_size));
+    if (read(fd, mem, fd_size) != fd_size)
+      LOG(FATAL) << "Failed to read benchmark file " << filename;
+    double entropy = compute_entropy(mem, fd_size);
+    dataset.push_back(std::make_tuple(fd_size, filename, entropy, mem));
+  }
+
+  LOG(INFO) << "Dataset with " << dataset.size() << " files is loaded";
+  return dataset;
 }
 
 int create_static_huffman_tables(qpl_path_t e_path,

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include <benchmark/benchmark.h>
@@ -31,6 +32,7 @@ static int prepare_compressed_files(uint8_t *src, size_t src_size,
                                     const char *filename) {
   // Compress.
   auto compressed_buff = malloc_allocate(src_size);
+  memset(compressed_buff.get(), 1, src_size);
   size_t compressed_size = 0;
   if (single_engine::compress(qpl_path_hardware, qpl_default_level,
                               single_engine::kModeDynamic, nullptr, nullptr,
@@ -213,6 +215,16 @@ auto BM_SingleEngineMinorPageFault_DeCompress = [](benchmark::State &state,
   return 0;
 };
 
+struct Arg {
+  int fd;
+  uint8_t *mem_buff;
+  size_t mem_size;
+};
+void task(void *arg) {
+  auto arg_ = reinterpret_cast<Arg *>(arg);
+  read(arg_->fd, arg_->mem_buff, arg_->mem_size);
+}
+
 auto BM_FullSystem = [](benchmark::State &state, auto Inputs...) {
   // Parse input.
   va_list args;
@@ -266,6 +278,9 @@ auto BM_FullSystem = [](benchmark::State &state, auto Inputs...) {
     // Mmap file.
     mem_buff = reinterpret_cast<uint8_t *>(
         mmap(nullptr, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+    // mem_buff = reinterpret_cast<uint8_t *>(
+    //     mmap(nullptr, mem_size, PROT_READ | PROT_WRITE,
+    //          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
   }
 
   // Benchmark.
@@ -285,12 +300,30 @@ auto BM_FullSystem = [](benchmark::State &state, auto Inputs...) {
     memset(decompressed_buff.get(), 1, decompression_expected_size);
     size_t decompression_size = 0;
     for (auto _ : state) {
-      if (single_engine::decompress(
-              qpl_path_hardware, single_engine::kModeDynamic, nullptr, 0,
-              mem_buff, mem_size, decompressed_buff.get(),
-              decompression_expected_size, &decompression_size)) {
-        state.SkipWithMessage("Failed to decompress.");
-        goto err;
+      // read(fd, mem_buff, mem_size);
+      if (static_cast<FullSystemMode>(mode) == kBenchmarkDecompressFromFile) {
+        // Arg args = {.fd = fd, .mem_buff = mem_buff, .mem_size = mem_size};
+        // std::thread t1(task, &args);
+        // usleep(100000);
+        // t1.join();
+
+        if (single_engine::decompress(
+                qpl_path_hardware, single_engine::kModeDynamic, nullptr, 0,
+                mem_buff, mem_size, decompressed_buff.get(),
+                decompression_expected_size, &decompression_size)) {
+          state.SkipWithMessage("Failed to decompress.");
+          goto err;
+        }
+
+        // t1.join();
+      } else {
+        if (single_engine::decompress(
+                qpl_path_hardware, single_engine::kModeDynamic, nullptr, 0,
+                mem_buff, mem_size, decompressed_buff.get(),
+                decompression_expected_size, &decompression_size)) {
+          state.SkipWithMessage("Failed to decompress.");
+          goto err;
+        }
       }
     }
 

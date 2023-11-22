@@ -104,7 +104,7 @@ int compress(qpl_path_t e_path, qpl_compression_levels level,
   job->next_in_ptr = const_cast<uint8_t *>(src);
   job->next_out_ptr = dst;
   job->available_in = src_size;
-  job->available_out = src_size / 2;
+  job->available_out = 2 * src_size;  // TODO(Nikita): document this!
   job->flags = QPL_FLAG_FIRST | QPL_FLAG_OMIT_VERIFY | QPL_FLAG_LAST;
   if (mode == kModeDynamic) {
     job->flags |= QPL_FLAG_DYNAMIC_HUFFMAN;
