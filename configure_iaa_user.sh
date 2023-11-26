@@ -89,7 +89,7 @@ for ((i = ${start}; i < ${end}; i += ${step})); do
  # Config WQ: group 0, size = 128, priority=10, mode=shared, type = user,
  # name=iax_crypto, threashold=128, block_on_fault=0, driver_name=user
  # accel-config config-wq iax${i}/wq${i}.0 -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -b 0 -d user
- accel-config config-wq iax${i}/wq${i}.0 -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user -b 1
+ accel-config config-wq iax${i}/wq${i}.0 -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user
  accel-config config-wq iax${i}/wq${i}.1 -g 0 -s $wq_size -p 9 -m ${mode} -y user -n user${i} -t $wq_size -d user
  accel-config config-wq iax${i}/wq${i}.2 -g 0 -s $wq_size -p 8 -m ${mode} -y user -n user${i} -t $wq_size -d user
  accel-config config-wq iax${i}/wq${i}.3 -g 0 -s $wq_size -p 7 -m ${mode} -y user -n user${i} -t $wq_size -d user

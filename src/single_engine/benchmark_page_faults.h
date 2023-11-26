@@ -99,11 +99,11 @@ auto BM_SingleEngineMinorPageFault_Compress = [](benchmark::State &state,
     state.SkipWithMessage("Failed to remmap source.");
 
   // Prepare page faults on dst buffer.
-  auto compressed_buff = mmap_allocate(mem_size);
+  auto compressed_buff = mmap_allocate(2 * mem_size);
   if (static_cast<PageFaultScenario>(pf_scenario) == kAtsMiss)
-    memset(compressed_buff.get(), 1, mem_size);
+    memset(compressed_buff.get(), 1, 2 * mem_size);
   if (static_cast<PageFaultScenario>(pf_scenario) == kNoFaults) {
-    memset(compressed_buff.get(), 1, mem_size);
+    memset(compressed_buff.get(), 1, 2 * mem_size);
     if (single_engine::iaa_translation_fetch(compressed_buff.get(), mem_size))
       state.SkipWithMessage("Failed to prefetch ats translations.");
   }
@@ -151,7 +151,7 @@ auto BM_SingleEngineMinorPageFault_DeCompress = [](benchmark::State &state,
   zero_initialize_counters(state);
 
   // Compress for verification.
-  auto compressed_buff = mmap_allocate(mem_size);
+  auto compressed_buff = mmap_allocate(2 * mem_size);
   size_t compressed_size = 0;
   if (single_engine::compress(qpl_path_hardware, qpl_default_level,
                               single_engine::kModeFixed, nullptr, nullptr,
@@ -164,19 +164,20 @@ auto BM_SingleEngineMinorPageFault_DeCompress = [](benchmark::State &state,
   std::unique_ptr<uint8_t, MMapDeleter> new_compressed_buff;
   if (static_cast<PageFaultScenario>(pf_scenario) == kMajorPageFaults)
     new_compressed_buff = remmap_memory_through_file(
-        compressed_buff.get(), mem_size, "decompress_src.dat", true, false);
+        compressed_buff.get(), 2 * mem_size, "decompress_src.dat", true, false);
 
   if (static_cast<PageFaultScenario>(pf_scenario) == kMinorPageFaults)
-    new_compressed_buff = remmap_memory_through_file(
-        compressed_buff.get(), mem_size, "decompress_src.dat", false, false);
+    new_compressed_buff =
+        remmap_memory_through_file(compressed_buff.get(), 2 * mem_size,
+                                   "decompress_src.dat", false, false);
 
   if (static_cast<PageFaultScenario>(pf_scenario) == kAtsMiss)
     new_compressed_buff = remmap_memory_through_file(
-        compressed_buff.get(), mem_size, "decompress_src.dat", false, true);
+        compressed_buff.get(), 2 * mem_size, "decompress_src.dat", false, true);
 
   if (static_cast<PageFaultScenario>(pf_scenario) == kNoFaults) {
     new_compressed_buff = remmap_memory_through_file(
-        compressed_buff.get(), mem_size, "decompress_src.dat", false, true);
+        compressed_buff.get(), 2 * mem_size, "decompress_src.dat", false, true);
     if (single_engine::iaa_translation_fetch(new_compressed_buff.get(),
                                              mem_size))
       state.SkipWithMessage("Failed to prefetch ats translations.");
@@ -238,9 +239,13 @@ auto BM_FullSystem = [](benchmark::State &state, auto Inputs...) {
   zero_initialize_counters(state);
 
   // Drop page cache.
-  if (system((std::string("sudo dd of=") + filename +
-              " oflag=nocache conv=notrunc,fdatasync count=0")
-                 .c_str())) {
+  // if (system((std::string("sudo dd of=") + filename +
+  //             " oflag=nocache conv=notrunc,fdatasync count=0")
+  //                .c_str())) {
+  //   LOG(WARNING) << "Failed to drop caches.";
+  //   return -1;
+  // }
+  if (system("echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null")) {
     LOG(WARNING) << "Failed to drop caches.";
     return -1;
   }

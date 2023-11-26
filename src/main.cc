@@ -16,13 +16,22 @@
 //  from corpus with 4~kB split for each benchmark;
 //  - qpl_path_hardware for kParallelFixed, kParallelDynamic, and
 //  kParallelCanned for each benchmark from corpus with job parallezation.
+// - qpl_path_hardware for kMajorPageFaults, kMinorPageFaults, kAtsMiss, and
+// kNoFaults for each benchmark from corpus.
+// - full system (see code).
 void register_benchmarks_with_corpus_datasets() {
-  CompressionDataset silesia_dataset =
-      load_corpus_dataset("dataset/silesia_tmp");
-
   static std::map<std::string, std::tuple<uint8_t *, size_t, double>>
       source_buffs;
+
+  CompressionDataset silesia_dataset =
+      load_corpus_dataset("dataset/silesia_tmp");
   for (auto const &[mem_size, name, entropy, source_buff] : silesia_dataset) {
+    source_buffs[name] = std::make_tuple(source_buff, mem_size, entropy);
+  }
+
+  CompressionDataset snapshots_dataset =
+      load_corpus_dataset("dataset/snapshots_tmp");
+  for (auto const &[mem_size, name, entropy, source_buff] : snapshots_dataset) {
     source_buffs[name] = std::make_tuple(source_buff, mem_size, entropy);
   }
 
@@ -81,9 +90,8 @@ void register_benchmarks_with_corpus_datasets() {
     for (const auto compression_mode :
          {multi_engine::kParallelFixed, multi_engine::kParallelDynamic,
           multi_engine::kParallelCanned}) {
-      // for (const int job_n : {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-      // 15, 16}) {
-      for (const int job_n : {1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26}) {
+      for (const int job_n :
+           {1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26}) {
         benchmark::RegisterBenchmark(
             "BM_MultipleEngine_Compress_" + std::to_string(mem_size / kkB) +
                 "kB" + "_name_" + benchmark_name + "_entropy_" +
@@ -100,94 +108,58 @@ void register_benchmarks_with_corpus_datasets() {
             static_cast<int>(compression_mode), mem_size, job_n, source_buff);
       }
     }
+
+    // #4
+    for (const auto pf_scenario :
+         {page_faults::kMajorPageFaults, page_faults::kMinorPageFaults,
+          page_faults::kAtsMiss, page_faults::kNoFaults}) {
+      benchmark::RegisterBenchmark(
+          "BM_SingleEngineMinorPageFault_Compress_" +
+              std::to_string(mem_size / kkB) + "kB" + "_name_" +
+              benchmark_name + "_entropy_" + std::to_string(entropy) +
+              "_pfscenario_" + std::to_string(pf_scenario),
+          page_faults::BM_SingleEngineMinorPageFault_Compress,
+          static_cast<int>(pf_scenario), mem_size, source_buff);
+      benchmark::RegisterBenchmark(
+          "BM_SingleEngineMinorPageFault_DeCompress_" +
+              std::to_string(mem_size / kkB) + "kB" + "_name_" +
+              benchmark_name + "_entropy_" + std::to_string(entropy) +
+              "_pfscenario_" + std::to_string(pf_scenario),
+          page_faults::BM_SingleEngineMinorPageFault_DeCompress,
+          static_cast<int>(pf_scenario), mem_size, source_buff);
+    }
+  }
+
+  // Full system benchmark.
+  // #5
+  CompressionDataset wiki_1GB_dataset = load_corpus_dataset("dataset/stat_tmp");
+  assert(wiki_1GB_dataset.size() == 1);
+  static std::map<size_t, std::string> compressed_filenames;
+  for (const size_t read_size_ :
+       {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536,
+        131072, 262144, 524288}) {
+    const auto read_size = read_size_ * kkB;
+    compressed_filenames[read_size] =
+        std::string("compressfile_") + std::to_string(read_size) + ".dat";
+    if (page_faults::prepare_compressed_files(
+            std::get<3>(wiki_1GB_dataset.front()), read_size,
+            compressed_filenames[read_size].c_str())) {
+      LOG(FATAL) << "Failed to create prepare compressed files.";
+    }
+
+    for (auto mode :
+         {page_faults::kBenchmarkDiskRead, page_faults::kBenchmarkDecompress,
+          page_faults::kBenchmarkDecompressFromFile}) {
+      benchmark::RegisterBenchmark(
+          "BM_FullSystem_" + std::to_string(read_size / kkB) + "kB" + "_mode_" +
+              std::to_string(mode),
+          page_faults::BM_FullSystem, static_cast<int>(mode), read_size,
+          compressed_filenames[read_size].c_str());
+    }
   }
 }
 
-// void register_benchmarks_with_synthetic_datasets() {
-//   static std::map<std::tuple<uint16_t, size_t>, std::tuple<uint8_t *,
-//   double>>
-//       source_buffs;
-//   const std::vector<uint16_t> kEntropyList = {1,   5,   10,  25, 50,
-//                                               150, 200, 300, 400};
-//   const std::vector<size_t> kMemorySizeList = {512 * kMB, 256 * kMB, 64 *
-//   kMB,
-//                                                16 * kMB,  1 * kMB,   256 *
-//                                                kkB, 64 * kkB,  4 * kkB};
-//   for (const auto entropy : kEntropyList) {
-//     for (const size_t &mem_size : kMemorySizeList) {
-//       uint8_t *source_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
-//       double true_entropy = init_rand_memory(source_buff, mem_size, entropy);
-//       source_buffs[std::make_tuple(entropy, mem_size)] =
-//           std::make_tuple(source_buff, true_entropy);
-//     }
-//   }
-
-//   for (const auto entropy : kEntropyList) {
-//     for (const size_t &mem_size : kMemorySizeList) {
-//       auto source_buff =
-//           std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
-//       auto true_entropy =
-//           std::get<1>(source_buffs[std::make_tuple(entropy, mem_size)]);
-//       for (const auto pf_scenario :
-//            {page_faults::kMajorPageFaults, page_faults::kMinorPageFaults,
-//             page_faults::kAtsMiss, page_faults::kNoFaults}) {
-//         benchmark::RegisterBenchmark(
-//             "BM_SingleEngineMinorPageFault_Compress_" +
-//                 std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
-//                 std::to_string(entropy) + "_" + std::to_string(true_entropy)
-//                 +
-//                 "_pfscenario_" + std::to_string(pf_scenario),
-//             page_faults::BM_SingleEngineMinorPageFault_Compress,
-//             static_cast<int>(pf_scenario), mem_size, source_buff);
-//         benchmark::RegisterBenchmark(
-//             "BM_SingleEngineMinorPageFault_DeCompress_" +
-//                 std::to_string(mem_size / kkB) + "kB" + "_entropy_" +
-//                 std::to_string(entropy) + "_" + std::to_string(true_entropy)
-//                 +
-//                 "_pfscenario_" + std::to_string(pf_scenario),
-//             page_faults::BM_SingleEngineMinorPageFault_DeCompress,
-//             static_cast<int>(pf_scenario), mem_size, source_buff);
-//       }
-
-//       for (const size_t &mem_size : kMemorySizeList) {
-//         auto entropy = kEntropyList.back();
-//         auto source_buff =
-//             std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
-//         compressed_filenames[mem_size] =
-//             std::string("compressfile_") + std::to_string(mem_size) + ".dat";
-//         if (page_faults::prepare_compressed_files(
-//                 source_buff, mem_size,
-//                 compressed_filenames[mem_size].c_str())) {
-//           LOG(FATAL) << "Failed to create prepare compressed files.";
-//         }
-
-//         for (auto mode : {page_faults::kBenchmarkDiskRead,
-//                           page_faults::kBenchmarkDecompress,
-//                           page_faults::kBenchmarkDecompressFromFile}) {
-//           benchmark::RegisterBenchmark(
-//               "BM_FullSystem_" + std::to_string(mem_size / kkB) + "kB" +
-//                   "_mode_" + std::to_string(mode),
-//               page_faults::BM_FullSystem, static_cast<int>(mode), mem_size,
-//               compressed_filenames[mem_size].c_str());
-//         }
-//       }
-
-//       for (const size_t &mem_size : kMemorySizeList) {
-//         auto entropy = kEntropyList.back();
-//         auto source_buff =
-//             std::get<0>(source_buffs[std::make_tuple(entropy, mem_size)]);
-//         benchmark::RegisterBenchmark(
-//             "BM_Scattered_" + std::to_string(mem_size / kkB) + "kB",
-//             single_engine_scattered::BM_Scattered, mem_size, source_buff);
-//       }
-//     }
-//   }
-// }
-
-void register_benchmarks() {
-  register_benchmarks_with_corpus_datasets();
-  // register_benchmarks_with_synthetic_datasets();
-}
+void register_benchmarks() { register_benchmarks_with_corpus_datasets(); }
 
 int main(int argc, char **argv) {
   register_benchmarks();
