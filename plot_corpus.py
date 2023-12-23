@@ -283,10 +283,6 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
         add_value_labels(b2, ax_1)
         add_value_labels(b3, ax_1)
 
-        # if id_x == 0:
-            # plots = [b1, b2, b3]
-            # labs = [l.get_label() for l in plots]
-            # ax.legend(plots, labs, ncol=3, fontsize=text_size_ultrabig+3, bbox_to_anchor=(1, 2), loc='upper center')
         ax.grid()
 
     for r in ['png', 'pdf']:
@@ -365,8 +361,6 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
             ax.grid()
 
         ax_s[0].set_ylabel('Throughput, GB/s', fontsize=text_size_big)
-        # if id_x == 0:
-            # ax_s[0].legend(ncol=2, fontsize=text_size_ultrabig, bbox_to_anchor=(1, 2), loc='upper left')
 
     for r in ['png', 'pdf']:
         plot_name_ = f'{plot_name}.{r}'
@@ -440,11 +434,6 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
         ax.grid()
         if id_x == 0:
             ax.set_ylabel('Time, ms', fontsize=text_size_ultrabig)
-        # if id_x == 1:
-            # ax_1.set_ylabel('Decompression time, ms', fontsize=text_size_big)
-        # labs = [l.get_label() for l in bars]
-        # if id_x == 0:
-            # ax.legend(bars, labs, ncol=2, fontsize=text_size_medium, bbox_to_anchor=(1, 2), loc='upper center')
 
     for r in ['png', 'pdf']:
         plot_name_ = f'{plot_name}.{r}'
@@ -461,7 +450,6 @@ def prepare_and_plot_exp_5(plot_name):
         if re_name == None:
             continue
 
-        # size = (int)(re_name.group(1))
         mode = (int)(re_name.group(2))
 
         time_ms = row['real_time'] / time_ns_to_ms
@@ -496,11 +484,6 @@ def prepare_and_plot_exp_5(plot_name):
                 if xx > 5 and diff > 20:
                     ylim = ax.get_ylim()
                     y_range = ylim[1] - ylim[0]
-                    # ax.axvline(x=xx, ymin=(y3 - ylim[0]) / y_range - 0.1, ymax=0.4, color='black', linestyle='--')
-                    # ax.annotate('', xy=(xx, y1), xytext=(xx, y3), 
-                    #             arrowprops=dict(facecolor='black', arrowstyle="<->", linestyle='--'))
-                    # # Add text to show the difference
-                    # ax.text(xx, y_range * 0.45, f'{diff:.0f}%', horizontalalignment='center', verticalalignment='bottom', fontsize=text_size_small, color='black')
 
     ax.yaxis.set_tick_params(labelsize=text_size_ultrabig, rotation=0)
     ax.set_ylabel('Achieved \nbandwidth, MB/s', fontsize=text_size_big)
