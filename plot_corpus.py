@@ -136,14 +136,14 @@ def plot_exp_1(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis=F
         ax.set_xticklabels([])
 
     ax.set_title(f'{name_suffix} compression', fontsize=text_size_big)
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+    ax.yaxis.set_tick_params(labelsize=text_size_medium, rotation=0)
 
     if not omit_y1_axis:
         ax.set_ylabel('Time, ms', fontsize=text_size_big)
 
     if not omit_y2_axis:
         ax_1.set_ylabel('Compression ratio', fontsize=text_size_big)
-    ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
+    ax_1.yaxis.set_tick_params(labelsize=text_size_medium, rotation=0)
 
     if not omit_legend:
         ax.legend(loc='upper left', fontsize=text_size_medium)
@@ -186,7 +186,7 @@ def plot_exp_1_a(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis
         ax.set_xticklabels([])
 
     ax.set_title(f'{name_suffix} decompression', fontsize=text_size_big)
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+    ax.yaxis.set_tick_params(labelsize=text_size_medium, rotation=0)
     ax.set_yscale('log')
 
     if not omit_y1_axis:
@@ -262,9 +262,9 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
 
         ax.set_xticks([p + width for p in x_positions])
         ax.set_xticklabels(mode_names, fontsize=text_size_ultrabig, rotation=0)
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_ultrabig)
+        ax.yaxis.set_tick_params(labelsize=text_size_ultrabig, rotation=0)
         ax_1.set_ylim(0, df_raw['Compression time'][2] + df_raw['Compression time'][2] * 1)
-        ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_ultrabig)
+        ax_1.yaxis.set_tick_params(labelsize=text_size_ultrabig, rotation=0)
         ax.set_title(f'{b_name}\n({(b_size_kb/4):.0f} 4kB pages)', fontsize=text_size_ultrabig+4)
         if id_x == 0:
             ax.set_ylabel('Compression ratio', fontsize=text_size_ultrabig)
@@ -433,8 +433,8 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
 
         ax.set_xticks([t for t in range(len(pfscenarios.values()))])
         ax.set_xticklabels(pfscenarios.values(), fontsize=text_size_ultrabig+2, rotation=0)
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_big)
-        ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_big)
+        ax.yaxis.set_tick_params(labelsize=text_size_big, rotation=0)
+        ax_1.yaxis.set_tick_params(labelsize=text_size_big, rotation=0)
         ax.set_title(f'{b_name}', fontsize=text_size_ultrabig)
 
         ax.grid()
@@ -502,7 +502,7 @@ def prepare_and_plot_exp_5(plot_name):
                     # # Add text to show the difference
                     # ax.text(xx, y_range * 0.45, f'{diff:.0f}%', horizontalalignment='center', verticalalignment='bottom', fontsize=text_size_small, color='black')
 
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+    ax.yaxis.set_tick_params(labelsize=text_size_ultrabig, rotation=0)
     ax.set_ylabel('Achieved \nbandwidth, MB/s', fontsize=text_size_big)
     ax.set_xlabel('Compressed data size, MB', fontsize=text_size_big)
     ax.grid()
