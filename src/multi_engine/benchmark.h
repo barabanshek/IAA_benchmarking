@@ -11,6 +11,7 @@
 #include "qpl_parallel.h"
 
 namespace multi_engine {
+
 auto BM_MultipleEngine_Compress = [](benchmark::State &state, auto Inputs...) {
   va_list args;
   va_start(args, Inputs);
@@ -19,6 +20,7 @@ auto BM_MultipleEngine_Compress = [](benchmark::State &state, auto Inputs...) {
   int job_n = va_arg(args, int);
   uint8_t *source_buff = va_arg(args, uint8_t *);
   assert(source_buff != nullptr);
+  va_end(args);
 
   size_t chunk_size = mem_size / static_cast<unsigned int>(job_n);
   size_t chunk_size_rem = mem_size % static_cast<unsigned int>(job_n);
@@ -36,10 +38,8 @@ auto BM_MultipleEngine_Compress = [](benchmark::State &state, auto Inputs...) {
   for (auto _ : state) {
     if (multi_engine::compress(
             static_cast<multi_engine::CompressionMode>(compression_mode),
-            source_buff, mem_size, &compressed_buff)) {
-      LOG(WARNING) << "Failed to compress.";
-      continue;
-    }
+            source_buff, mem_size, &compressed_buff))
+      state.SkipWithMessage("Failed to compress.");
   }
   size_t compressed_size = 0;
   for (auto cb_ : compressed_buff)
@@ -47,23 +47,16 @@ auto BM_MultipleEngine_Compress = [](benchmark::State &state, auto Inputs...) {
   state.counters["Compression Ratio"] = 1.0 * mem_size / compressed_size;
 
   // Verify with decompress.
-  uint8_t *decompressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
+  auto decompressed_buff = mmap_allocate(mem_size);
   size_t decompression_size = 0;
-  if (multi_engine::decompress(compressed_buff, decompressed_buff,
-                               &decompression_size)) {
-    LOG(WARNING) << "Failed to decompress.";
-    goto err;
-  }
+  if (multi_engine::decompress(compressed_buff, decompressed_buff.get(),
+                               &decompression_size))
+    state.SkipWithMessage("Failed to decompress.");
   if (decompression_size != mem_size ||
-      memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
-    LOG(FATAL) << "Data missmatch.";
-    goto err;
-  }
-  state.counters["Status"] = 0;
+      memcmp(source_buff, decompressed_buff.get(), decompression_size) != 0)
+    state.SkipWithMessage("Data missmatch.");
 
-err:
-  va_end(args);
-  free(decompressed_buff);
+  state.counters["Status"] = 0;
 };
 
 auto BM_MultipleEngine_DeCompress = [](benchmark::State &state,
@@ -75,10 +68,11 @@ auto BM_MultipleEngine_DeCompress = [](benchmark::State &state,
   int job_n = va_arg(args, int);
   uint8_t *source_buff = va_arg(args, uint8_t *);
   assert(source_buff != nullptr);
+  va_end(args);
 
   size_t compressed_size = 0;
-  uint8_t *decompressed_buff = reinterpret_cast<uint8_t *>(malloc(mem_size));
-  memset(decompressed_buff, 1, mem_size);
+  auto decompressed_buff = mmap_allocate(mem_size);
+  memset(decompressed_buff.get(), 1, mem_size);
   size_t decompression_size = 0;
 
   size_t chunk_size = mem_size / static_cast<unsigned int>(job_n);
@@ -97,10 +91,7 @@ auto BM_MultipleEngine_DeCompress = [](benchmark::State &state,
   if (multi_engine::compress(
           static_cast<multi_engine::CompressionMode>(compression_mode),
           source_buff, mem_size, &compressed_buff)) {
-    LOG(WARNING) << "Failed to compress.";
-    for (auto _ : state) {
-    }
-    goto err;
+    state.SkipWithMessage("Failed to compress.");
   }
   for (auto cb_ : compressed_buff)
     compressed_size += std::get<0>(cb_).size();
@@ -108,25 +99,18 @@ auto BM_MultipleEngine_DeCompress = [](benchmark::State &state,
 
   // Decompress.
   for (auto _ : state) {
-    if (multi_engine::decompress(compressed_buff, decompressed_buff,
-                                 &decompression_size)) {
-      LOG(WARNING) << "Failed to compress.";
-      continue;
-    }
+    if (multi_engine::decompress(compressed_buff, decompressed_buff.get(),
+                                 &decompression_size))
+      state.SkipWithMessage("Failed to decompress.");
   }
-
   // Verify.
   if (decompression_size != mem_size ||
-      memcmp(source_buff, decompressed_buff, decompression_size) != 0) {
-    LOG(FATAL) << "Data missmatch.";
-    goto err;
-  }
-  state.counters["Status"] = 0;
+      memcmp(source_buff, decompressed_buff.get(), decompression_size) != 0)
+    state.SkipWithMessage("Data missmatch.");
 
-err:
-  va_end(args);
-  free(decompressed_buff);
+  state.counters["Status"] = 0;
 };
+
 } // namespace multi_engine
 
 #endif

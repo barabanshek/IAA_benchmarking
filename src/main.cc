@@ -132,7 +132,7 @@ void register_benchmarks_with_corpus_datasets() {
 
   // Full system benchmark.
   // #5
-  CompressionDataset wiki_1GB_dataset = load_corpus_dataset("dataset/stat_tmp");
+  CompressionDataset wiki_1GB_dataset = load_corpus_dataset("dataset/wiki_tmp");
   assert(wiki_1GB_dataset.size() == 1);
   static std::map<size_t, std::string> compressed_filenames;
   for (const size_t read_size_ :
