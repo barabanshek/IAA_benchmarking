@@ -204,7 +204,7 @@ def plot_exp_1_a(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis
         print(f"Plot saved in {plot_name_}")
 
 def prepare_and_plot_exp_2(plot_name, b_name_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_name_(.*)_entropy_(.*)_mode_(.)_mean'
+    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_name_(.*)_entropy_(.*)_mode_(.)'
     data = {}
     modes = []
     mode_names = ['Continious\nbaseline', 'Naive', 'Canned']
@@ -244,7 +244,7 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
             exit(0)
 
     # plot.
-    fig, axs = plt.subplots(1, len(data), figsize=(len(data) * 8, 4))
+    fig, axs = plt.subplots(1, len(data), figsize=(len(data) * 8, 5.5))
     for (b_name, b_data), ax, id_x in zip(data.items(), axs, range(len(data))):
         b_size_kb = b_data['0'][4]
         ax_1 = ax.twinx()
@@ -265,9 +265,9 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_ultrabig)
         ax_1.set_ylim(0, df_raw['Compression time'][2] + df_raw['Compression time'][2] * 1)
         ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_ultrabig)
-        ax.set_title(f'{b_name} ({(b_size_kb/4):.0f} 4kB pages)', fontsize=text_size_ultrabig)
+        ax.set_title(f'{b_name}\n({(b_size_kb/4):.0f} 4kB pages)', fontsize=text_size_ultrabig+4)
         if id_x == 0:
-            ax.set_ylabel('Compression\nratio', fontsize=text_size_ultrabig)
+            ax.set_ylabel('Compression ratio', fontsize=text_size_ultrabig)
         if id_x == 1:
             ax_1.set_ylabel('Time, ms', fontsize=text_size_ultrabig)
 
@@ -278,15 +278,15 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
                 value = height
                 if height > axis.get_ylim()[1]:
                     height = axis.get_ylim()[1]
-                axis.text(bar.get_x() + bar.get_width() / 2., 0.5002 * height, f'{value:.1f}', ha='center', va='bottom', fontsize=text_size_big, rotation=90)
+                axis.text(bar.get_x() + bar.get_width() / 2., 0.5002 * height, f'{value:.1f}', ha='center', va='bottom', fontsize=text_size_ultrabig, rotation=90)
         add_value_labels(b1, ax)
         add_value_labels(b2, ax_1)
         add_value_labels(b3, ax_1)
 
-        if id_x == 0:
-            plots = [b1, b2, b3]
-            labs = [l.get_label() for l in plots]
-            ax.legend(plots, labs, ncol=3, fontsize=text_size_ultrabig, bbox_to_anchor=(1, 2), loc='upper center')
+        # if id_x == 0:
+            # plots = [b1, b2, b3]
+            # labs = [l.get_label() for l in plots]
+            # ax.legend(plots, labs, ncol=3, fontsize=text_size_ultrabig+3, bbox_to_anchor=(1, 2), loc='upper center')
         ax.grid()
 
     for r in ['png', 'pdf']:
@@ -296,7 +296,7 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
         print(f"Plot saved in {plot_name_}")
 
 def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
-    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_jobs_(.*)_mode_(.*)_mean'
+    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_jobs_(.*)_mode_(.*)'
     data = {}
     modes = []
     mode_names = ['Fixed Block', 'Dynamic Block', 'Static Block']
@@ -342,7 +342,7 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
         else:
             exit(0)
 
-    fig, axs = plt.subplots(len(data), len(modes), figsize=(len(modes) * 6, len(data) * 3))
+    fig, axs = plt.subplots(len(data), len(modes), figsize=(len(modes) * 5.5, len(data) * 3.5))
     for (b_name, b_data), ax_s, id_x in zip(data.items(), axs, range(len(axs))):
         for (m_name, m_data), ax in zip(b_data.items(), ax_s):
             size = m_data[2][4] / 1024
@@ -355,18 +355,18 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
             ax.plot(x_positions, df_raw['Compression time'], label=f'Compression', color='black', marker='o', linewidth=2)
             ax.plot(x_positions, df_raw['Decompression time'], label=f'DeCompression', color='darkred', marker='o', linewidth=2)
 
-            # ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
+            ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
             ax.set_xticks([p for p in x_positions])
             ax.set_xticklabels(df_raw['Key'], fontsize=text_size_medium, rotation=45)
-            ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
+            ax.yaxis.set_tick_params(labelsize=text_size_medium, rotation=0)
             ax.set_title(f'{b_name} ({size:.1f} MB)/{mode_names[m_name]}', fontsize=text_size_big)
             if id_x == 2:
                 ax.set_xlabel('Number of jobs', fontsize=text_size_big)
             ax.grid()
 
         ax_s[0].set_ylabel('Throughput, GB/s', fontsize=text_size_big)
-        if id_x == 0:
-            ax_s[0].legend(ncol=1, fontsize=text_size_small, loc='upper left')
+        # if id_x == 0:
+            # ax_s[0].legend(ncol=2, fontsize=text_size_ultrabig, bbox_to_anchor=(1, 2), loc='upper left')
 
     for r in ['png', 'pdf']:
         plot_name_ = f'{plot_name}.{r}'
@@ -375,7 +375,7 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
         print(f"Plot saved in {plot_name_}")
 
 def prepare_and_plot_exp_4(plot_name, b_name_filter):
-    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_pfscenario_(.*)_mean'
+    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_pfscenario_(.*)'
     data = {}
     modes = []
     pfscenarios = {0: 'Major \npf', 1: 'Minor \npf', 2: 'ATS \nmiss', 3: 'No \nfaults'}
@@ -413,7 +413,7 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
         else:
             exit(0)
 
-    fig, axs = plt.subplots(1, len(data), figsize=(6.5 * len(data), 3.5))
+    fig, axs = plt.subplots(1, len(data), figsize=(6.7 * len(data), 5))
     for (b_name, b_data), ax, id_x in zip(data.items(), axs, range(len(axs))):
         ax_1 = ax.twinx()
 
@@ -432,19 +432,19 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
             add_value_labels(b, axx)
 
         ax.set_xticks([t for t in range(len(pfscenarios.values()))])
-        ax.set_xticklabels(pfscenarios.values(), fontsize=text_size_medium, rotation=0)
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
-        ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_medium)
-        ax.set_title(f'{b_name}', fontsize=text_size_big)
+        ax.set_xticklabels(pfscenarios.values(), fontsize=text_size_ultrabig+2, rotation=0)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_big)
+        ax_1.set_yticklabels(ax_1.get_yticklabels(), fontsize=text_size_big)
+        ax.set_title(f'{b_name}', fontsize=text_size_ultrabig)
 
         ax.grid()
         if id_x == 0:
-            ax.set_ylabel('Compression\ntime, ms', fontsize=text_size_big)
-        if id_x == 1:
-            ax_1.set_ylabel('Decompression\ntime, ms', fontsize=text_size_big)
-        labs = [l.get_label() for l in bars]
-        if id_x == 0:
-            ax.legend(bars, labs, ncol=2, fontsize=text_size_medium, bbox_to_anchor=(1, 2), loc='upper center')
+            ax.set_ylabel('Time, ms', fontsize=text_size_ultrabig)
+        # if id_x == 1:
+            # ax_1.set_ylabel('Decompression time, ms', fontsize=text_size_big)
+        # labs = [l.get_label() for l in bars]
+        # if id_x == 0:
+            # ax.legend(bars, labs, ncol=2, fontsize=text_size_medium, bbox_to_anchor=(1, 2), loc='upper center')
 
     for r in ['png', 'pdf']:
         plot_name_ = f'{plot_name}.{r}'
@@ -455,7 +455,7 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
 def prepare_and_plot_exp_5(plot_name):
     r = r'BM_FullSystem_([0-9]*)kB_mode_(.*)_mean'
     data = {}
-    modes = ['Disk Read', 'Decompress', 'Disk Read + Decompress']
+    modes = ['Disk Read', 'Disk Read (O_DIRECT)', 'Decompress', 'Disk Read + Decompress']
     for index, row in df.iterrows():
         re_name = re.match(r, row['name'])
         if re_name == None:
@@ -472,9 +472,9 @@ def prepare_and_plot_exp_5(plot_name):
 
         data[mode][file_size] = (file_size/time_ms) * 1000 / (1024 * 1024)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(8.5, 4.5))
     arr = np.zeros((1, len(list(data.values())[0].values())))
-    for (mode, mode_v), mode_name, c, l in zip(data.items(), modes, ['black', 'black', 'darkred'], ['--', '-', '-']):
+    for (mode, mode_v), mode_name, c, l, m in zip(data.items(), modes, ['gray', 'black', 'black', 'darkred'], ['-', '--', '-', '-'], ['x', 'o', 'o', 'o']):
         arr = np.vstack((arr, list(mode_v.values())))
         df_raw = pd.DataFrame.from_dict(mode_v, orient='index', columns=['Bandwidth'])
         df_raw.reset_index(inplace=True)
@@ -482,7 +482,7 @@ def prepare_and_plot_exp_5(plot_name):
         df_raw.sort_values('Key', inplace=True)
 
         x_positions = [t for t in range(len(df_raw))]
-        ax.plot(x_positions, df_raw['Bandwidth'], color=c, marker='o', label=mode_name, linestyle=l, linewidth=2)
+        ax.plot(x_positions, df_raw['Bandwidth'], color=c, marker=m, label=mode_name, linestyle=l, linewidth=2)
         ax.set_xticks(x_positions)
         ax.set_xticklabels(['{:.2f}'.format(float(x) / (1024 * 1024)) for x in df_raw['Key']], fontsize=text_size_medium, rotation=45)
 
@@ -496,11 +496,11 @@ def prepare_and_plot_exp_5(plot_name):
                 if xx > 5 and diff > 20:
                     ylim = ax.get_ylim()
                     y_range = ylim[1] - ylim[0]
-                    ax.axvline(x=xx, ymin=(y3 - ylim[0]) / y_range - 0.1, ymax=0.4, color='black', linestyle='--')
-                    ax.annotate('', xy=(xx, y1), xytext=(xx, y3), 
-                                arrowprops=dict(facecolor='black', arrowstyle="<->", linestyle='--'))
-                    # Add text to show the difference
-                    ax.text(xx, y_range * 0.45, f'{diff:.0f}%', horizontalalignment='center', verticalalignment='bottom', fontsize=text_size_small, color='black')
+                    # ax.axvline(x=xx, ymin=(y3 - ylim[0]) / y_range - 0.1, ymax=0.4, color='black', linestyle='--')
+                    # ax.annotate('', xy=(xx, y1), xytext=(xx, y3), 
+                    #             arrowprops=dict(facecolor='black', arrowstyle="<->", linestyle='--'))
+                    # # Add text to show the difference
+                    # ax.text(xx, y_range * 0.45, f'{diff:.0f}%', horizontalalignment='center', verticalalignment='bottom', fontsize=text_size_small, color='black')
 
     ax.set_yticklabels(ax.get_yticklabels(), fontsize=text_size_medium)
     ax.set_ylabel('Achieved \nbandwidth, MB/s', fontsize=text_size_big)
@@ -550,6 +550,6 @@ def plot_figure_5():
 if for_paper:
     # plot_figure_1()
     # plot_figure_2()
-    # plot_figure_3()
+    plot_figure_3()
     # plot_figure_4()
-    plot_figure_5()
+    # plot_figure_5()

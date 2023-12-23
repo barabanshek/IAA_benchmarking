@@ -17,4 +17,4 @@ find_package (gflags REQUIRED)
 #
 add_executable(iaa_bench src/main.cc)
 
-target_link_libraries(iaa_bench PUBLIC qpl benchmark glog)
+target_link_libraries(iaa_bench PUBLIC qpl benchmark glog gflags)

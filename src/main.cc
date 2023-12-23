@@ -141,20 +141,22 @@ void register_benchmarks_with_corpus_datasets() {
     const auto read_size = read_size_ * kkB;
     compressed_filenames[read_size] =
         std::string("compressfile_") + std::to_string(read_size) + ".dat";
+    size_t compressed_size = 0;
     if (page_faults::prepare_compressed_files(
             std::get<3>(wiki_1GB_dataset.front()), read_size,
-            compressed_filenames[read_size].c_str())) {
+            compressed_filenames[read_size].c_str(), &compressed_size)) {
       LOG(FATAL) << "Failed to create prepare compressed files.";
     }
 
-    for (auto mode :
-         {page_faults::kBenchmarkDiskRead, page_faults::kBenchmarkDecompress,
-          page_faults::kBenchmarkDecompressFromFile}) {
+    for (auto mode : {page_faults::kBenchmarkDiskRead,
+                      page_faults::kBenchmarkDiskReadIODirect,
+                      page_faults::kBenchmarkDecompress,
+                      page_faults::kBenchmarkDecompressFromFile}) {
       benchmark::RegisterBenchmark(
           "BM_FullSystem_" + std::to_string(read_size / kkB) + "kB" + "_mode_" +
               std::to_string(mode),
           page_faults::BM_FullSystem, static_cast<int>(mode), read_size,
-          compressed_filenames[read_size].c_str());
+          compressed_filenames[read_size].c_str(), compressed_size);
     }
   }
 }
