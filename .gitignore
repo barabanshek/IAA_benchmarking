@@ -5,3 +5,7 @@ tmp/
 *.txt
 *_tmp/
 dataset/silesia/*
+dataset/silesia_tmp/*
+dataset/wiki/*
+dataset/wiki_tmp/*
+dataset/snapshots_tmp/*
