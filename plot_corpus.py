@@ -204,7 +204,7 @@ def plot_exp_1_a(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis
         print(f"Plot saved in {plot_name_}")
 
 def prepare_and_plot_exp_2(plot_name, b_name_filter):
-    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_name_(.*)_entropy_(.*)_mode_(.)'
+    r = r'BM_SingleEngineBlocking_(.*)_Canned_([0-9]*)kB_name_(.*)_entropy_(.*)_mode_(.)_mean'
     data = {}
     modes = []
     mode_names = ['Continious\nbaseline', 'Naive', 'Canned']
@@ -296,7 +296,7 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
         print(f"Plot saved in {plot_name_}")
 
 def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
-    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_jobs_(.*)_mode_(.*)'
+    r = r'BM_MultipleEngine_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_jobs_(.*)_mode_(.*)_mean'
     data = {}
     modes = []
     mode_names = ['Fixed Block', 'Dynamic Block', 'Static Block']
@@ -375,7 +375,7 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
         print(f"Plot saved in {plot_name_}")
 
 def prepare_and_plot_exp_4(plot_name, b_name_filter):
-    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_pfscenario_(.*)'
+    r = r'BM_SingleEngineMinorPageFault_(.*)_([0-9]*)kB_name_(.*)_entropy_(.*)_pfscenario_(.*)_mean'
     data = {}
     modes = []
     pfscenarios = {0: 'Major \npf', 1: 'Minor \npf', 2: 'ATS \nmiss', 3: 'No \nfaults'}
@@ -545,11 +545,11 @@ def plot_figure_4():
     prepare_and_plot_exp_4(plot_name + '_4', ['mozilla', 'pillow'])
 
 def plot_figure_5():
-    prepare_and_plot_exp_5(plot_name + '_4')
+    prepare_and_plot_exp_5(plot_name + '_5')
 
 if for_paper:
-    # plot_figure_1()
-    # plot_figure_2()
+    plot_figure_1()
+    plot_figure_2()
     plot_figure_3()
-    # plot_figure_4()
-    # plot_figure_5()
+    plot_figure_4()
+    plot_figure_5()

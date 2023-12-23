@@ -10,4 +10,4 @@
 * get benchmarks: `cd dataset/; ./extract.sh; cd ..`
 * run (all benchmarks) 3 time seach and collect data as .csv: `sudo ./build/iaa_bench --benchmark_repetitions=3 --benchmark_min_time=1x --benchmark_format=csv --logtostderr | tee tmp/results.csv`
 * run specific benchmarks: `sudo ./build/iaa_bench --benchmark_repetitions=3 --benchmark_min_time=1x --benchmark_format=csv --benchmark_filter='.*MultipleEngine.*' --logtostderr | tee tmp/results.csv`
-* plot all results: `python3 plot_corpus.py`
+* plot all results: `python3 plot_corpus.py tmp/results.csv experiment`
