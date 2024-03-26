@@ -1,7 +1,8 @@
 [submodule "qpl"]
 	path = qpl
-	url = https://github.com/barabanshek/qpl
-	branch = microvm
+	url = https://github.com/intel/qpl
+	branch = develop
+	commit = a61bdd845fd7ca363b2bcc55454aa520dfcd8298
 [submodule "benchmark"]
 	path = benchmark
 	url = https://github.com/google/benchmark
