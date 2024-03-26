@@ -1,29 +1,37 @@
 #!/usr/bin/env bash
 
 # Script configure IAA devices
-# Usage : ./configure_iaa_user <mode> <start,end> <wq_size>
+# Usage : ./configure_iaa_user <mode> <start,end> <wq_size> <engine_number>
 # mode: 0 - shared, 1 - dedicated
-# devices: 0 - all devices or start and end device number.
-# For example, 1, 7 will configure all the Socket0 devices in host or 0, 3
-# will configure all the Socket0 devices in guest
-# 9, 15 will configure all the Socket1 devices and son on
+# devices: device number OR start and end device number.
+# For example, 1, 7 will configure all the Socket0 devices in host,
+# 9, 15 will configure all the Socket1 devices and son on,
 # 1 will configure only device 1
 # wq_size: 1-128
-#
-# select iax config
-#
-dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# engine_number: 1-8 - number of engines per device
 
 #
-# count iax instances
+# Global configs.
+#
+# Max engines per device -- CHANGE IF REQUIRED.
+max_engines=8
+# Max WQs per device -- CHANGE IF REQUIRED.
+max_wqs=8
+
+#
+# Count IAA instances in the system.
 #
 iax_dev_id="0cfe"
 num_iax=$(lspci -d:${iax_dev_id} | wc -l)
 echo "Found ${num_iax} IAX instances"
 
+#
+# Parse input.
+#
 dedicated=${1:-0}; shift
 device_num=${1:-$num_iax}; shift
 wq_size=${1:-128}; shift
+engine_number=${1:-128}; shift
 
 if [ ${dedicated} -eq 0 ]; then
  mode="shared"
@@ -31,31 +39,39 @@ else
  mode="dedicated"
 fi
 
-# set first,step counters to correctly enumerate iaa devices
+#
+# Disable all IAA devices, engines, and WQs.
+#
+echo "Disable all IAA devices, engines, and WQs."
+
 first=1 && step=2
-
-#
-# disable iax wqs and devices
-#
-echo "Disable IAX"
-
 for ((i = ${first}; i < ${step} * ${num_iax}; i += ${step})); do
- echo disable wq iax${i}/wq${i}.0 >& /dev/null
- accel-config disable-wq iax${i}/wq${i}.0 >& /dev/null
- echo disable iax iax${i} >& /dev/null
- accel-config disable-device iax${i} >& /dev/null
+ for ((j = 0; j < ${max_wqs}; j += 1)); do
+  accel-config disable-wq iax${i}/wq${i}.${j}
+ done
+
+ echo disable iax iax${i}
+ accel-config disable-device iax${i}
 done
-echo "Configuring devices: ${device_num}"
+
+echo
+echo "************"
+echo "Enabling things..."
+echo "************"
+echo
 
 #
-# Enable/Disable PRS
+# Enable/Disable PRS (not supported in every system).
 #
 lspci -vvv | grep 0cfe | awk '{print $1}' | while IFS= read -r line; do
     device_address="00:${line}"
-    sudo setpci -s "$device_address" 244.B=1
+    sudo setpci -s "$device_address" 244.B=1 # Change to 1/0 Enable/Disable
 done
-echo "PRS enabled doe all devices!"
+echo "PRS enabled on all devices!"
 
+#
+# Enable IAA devices, engines, and WQs.
+#
 if [ ${device_num} == $num_iax ]; then
  echo "Configuring all devices"
  start=${first}
@@ -71,43 +87,27 @@ else
  fi
 fi
 
-#
-# enable all iax devices and wqs
-#
-echo "Enable IAX ${start} to ${end}"
+# Enable loop.
+echo "Enable IAA devices: ${start} to ${end}"
 for ((i = ${start}; i < ${end}; i += ${step})); do
- # Config Engines and groups
- accel-config config-engine iax${i}/engine${i}.0 --group-id=0
- accel-config config-engine iax${i}/engine${i}.1 --group-id=0
- accel-config config-engine iax${i}/engine${i}.2 --group-id=0
- accel-config config-engine iax${i}/engine${i}.3 --group-id=0
- accel-config config-engine iax${i}/engine${i}.4 --group-id=0
- accel-config config-engine iax${i}/engine${i}.5 --group-id=0
- accel-config config-engine iax${i}/engine${i}.6 --group-id=0
- accel-config config-engine iax${i}/engine${i}.7 --group-id=0
+ # Config engines.
+ for ((j = 0; j < ${engine_number}; j += 1)); do
+  echo enable engine iax${i}/engine${i}.${j}
+  accel-config config-engine iax${i}/engine${i}.${j} --group-id=0
+ done
 
- # Config WQ: group 0, size = 128, priority=10, mode=shared, type = user,
- # name=iax_crypto, threashold=128, block_on_fault=0, driver_name=user
- # accel-config config-wq iax${i}/wq${i}.0 -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -b 0 -d user
- accel-config config-wq iax${i}/wq${i}.0 -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user
- accel-config config-wq iax${i}/wq${i}.1 -g 0 -s $wq_size -p 9 -m ${mode} -y user -n user${i} -t $wq_size -d user
- accel-config config-wq iax${i}/wq${i}.2 -g 0 -s $wq_size -p 8 -m ${mode} -y user -n user${i} -t $wq_size -d user
- accel-config config-wq iax${i}/wq${i}.3 -g 0 -s $wq_size -p 7 -m ${mode} -y user -n user${i} -t $wq_size -d user
- accel-config config-wq iax${i}/wq${i}.4 -g 0 -s $wq_size -p 7 -m ${mode} -y user -n user${i} -t $wq_size -d user
- accel-config config-wq iax${i}/wq${i}.5 -g 0 -s $wq_size -p 7 -m ${mode} -y user -n user${i} -t $wq_size -d user
- accel-config config-wq iax${i}/wq${i}.6 -g 0 -s $wq_size -p 7 -m ${mode} -y user -n user${i} -t $wq_size -d user
-#  accel-config config-wq iax${i}/wq${i}.0 -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -d user
+ # Config all WQs (even if only 1 is used), otherwise the config will fail.
+ for ((j = 0; j < ${max_wqs}; j += 1)); do
+  accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user
+ done
 
+ # Enable device.
  echo enable device iax${i}
  accel-config enable-device iax${i}
- echo enable wq iax${i}/wq${i}.0
- echo enable wq iax${i}/wq${i}.1
- accel-config enable-wq iax${i}/wq${i}.0
- accel-config enable-wq iax${i}/wq${i}.1
- accel-config enable-wq iax${i}/wq${i}.2
- accel-config enable-wq iax${i}/wq${i}.3
- accel-config enable-wq iax${i}/wq${i}.4
- accel-config enable-wq iax${i}/wq${i}.5
- accel-config enable-wq iax${i}/wq${i}.6
+
+ # Enable WQs, one for each engine.
+ for ((j = 0; j < ${engine_number}; j += 1)); do
+  accel-config enable-wq iax${i}/wq${i}.${j}
+ done
 
 done
