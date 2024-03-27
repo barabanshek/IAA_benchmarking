@@ -5,7 +5,6 @@
 #include "multi_engine/benchmark.h"
 #include "single_engine/benchmark.h"
 #include "single_engine/benchmark_page_faults.h"
-#include "single_engine/benchmark_scattered.h"
 
 #include <gflags/gflags.h>
 

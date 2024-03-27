@@ -32,7 +32,7 @@ std::unique_ptr<uint8_t[]> init_qpl(qpl_path_t e_path) {
     return std::unique_ptr<uint8_t[]>(nullptr);
   }
 
-  return std::move(job_buffer);
+  return job_buffer;
 }
 
 int free_qpl(qpl_job *job) {
@@ -67,7 +67,7 @@ int compress(CompressionMode mode, const uint8_t *src, size_t src_size,
   job->op = qpl_op_compress;
   job->level = qpl_default_level;
   job->next_out_ptr = dst;
-  job->available_out = src_size - 1;
+  job->available_out = *dst_size;
   job->flags = QPL_FLAG_FIRST | QPL_FLAG_OMIT_VERIFY;
 
   if (mode == kContinious) {

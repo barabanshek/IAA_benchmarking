@@ -35,7 +35,7 @@ std::unique_ptr<uint8_t[]> init_qpl(qpl_path_t e_path) {
     return std::unique_ptr<uint8_t[]>(nullptr);
   }
 
-  return std::move(job_buffer);
+  return job_buffer;
 }
 
 int free_qpl(qpl_job *job) {
@@ -76,6 +76,8 @@ int iaa_translation_fetch(uint8_t *src, size_t src_size) {
   return 0;
 }
 
+/// @param dst_size must contain the reserved size of the destination; the
+/// function re-writes it later with the actual size after compression.
 int compress(qpl_path_t e_path, qpl_compression_levels level,
              CompressionMode mode, qpl_huffman_table_t *c_huffman_table,
              uint32_t *last_bit_offset, const uint8_t *src, size_t src_size,
@@ -104,9 +106,7 @@ int compress(qpl_path_t e_path, qpl_compression_levels level,
   job->next_in_ptr = const_cast<uint8_t *>(src);
   job->next_out_ptr = dst;
   job->available_in = src_size;
-  job->available_out =
-      src_size - 1; // TODO(Nikita): sometimes, more space needed (usualy 2 *
-                    // src_size is always enough)
+  job->available_out = *dst_size;
   job->flags = QPL_FLAG_FIRST | QPL_FLAG_OMIT_VERIFY | QPL_FLAG_LAST;
   if (mode == kModeDynamic) {
     job->flags |= QPL_FLAG_DYNAMIC_HUFFMAN;

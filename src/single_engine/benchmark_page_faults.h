@@ -35,9 +35,9 @@ static int prepare_compressed_files(uint8_t *src, size_t src_size,
                                     const char *filename,
                                     size_t *compressed_size_out) {
   // Compress.
-  auto compressed_buff = malloc_allocate(src_size);
-  memset(compressed_buff.get(), 1, src_size);
-  size_t compressed_size = 0;
+  size_t compressed_size = 2 * src_size;
+  auto compressed_buff = malloc_allocate(compressed_size);
+  memset(compressed_buff.get(), _PAGE_PREFAULT_, compressed_size);
   if (single_engine::compress(qpl_path_hardware, qpl_default_level,
                               single_engine::kModeDynamic, nullptr, nullptr,
                               src, src_size, compressed_buff.get(),
