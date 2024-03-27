@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include "full_system/benchmark_full_system.h"
 #include "multi_engine/benchmark.h"
 #include "single_engine/benchmark.h"
 #include "single_engine/benchmark_page_faults.h"
@@ -141,20 +142,20 @@ void register_benchmarks_with_corpus_datasets() {
     compressed_filenames[read_size] =
         std::string("compressfile_") + std::to_string(read_size) + ".dat";
     size_t compressed_size = 0;
-    if (page_faults::prepare_compressed_files(
+    if (full_system::prepare_compressed_files(
             std::get<3>(wiki_1GB_dataset.front()), read_size,
             compressed_filenames[read_size].c_str(), &compressed_size)) {
       LOG(FATAL) << "Failed to create prepare compressed files.";
     }
 
-    for (auto mode : {page_faults::kBenchmarkDiskRead,
-                      page_faults::kBenchmarkDiskReadIODirect,
-                      page_faults::kBenchmarkDecompress,
-                      page_faults::kBenchmarkDecompressFromFile}) {
+    for (auto mode : {full_system::kBenchmarkDiskRead,
+                      full_system::kBenchmarkDiskReadIODirect,
+                      full_system::kBenchmarkDecompress,
+                      full_system::kBenchmarkDecompressFromFile}) {
       benchmark::RegisterBenchmark(
           "BM_FullSystem_" + std::to_string(read_size / kkB) + "kB" + "_mode_" +
               std::to_string(mode),
-          page_faults::BM_FullSystem, static_cast<int>(mode), read_size,
+          full_system::BM_FullSystem, static_cast<int>(mode), read_size,
           compressed_filenames[read_size].c_str(), compressed_size);
     }
   }
