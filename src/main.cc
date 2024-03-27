@@ -137,7 +137,7 @@ void register_benchmarks_with_corpus_datasets() {
   static std::map<size_t, std::string> compressed_filenames;
   for (const size_t read_size_ :
        {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536,
-        131072, 262144, 524288}) {
+        131072, 232144}) {
     const auto read_size = read_size_ * kkB;
     compressed_filenames[read_size] =
         std::string("compressfile_") + std::to_string(read_size) + ".dat";
