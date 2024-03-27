@@ -39,7 +39,7 @@ void register_benchmarks_with_corpus_datasets() {
     auto const [source_buff, mem_size, entropy] = source_buffs[benchmark_name];
 
     // #1
-    qpl_huffman_table_t empty_table;
+    qpl_huffman_table_t empty_table = nullptr;
     for (const auto execution_path : {qpl_path_software, qpl_path_hardware}) {
       for (const auto compression_mode :
            {single_engine::kModeFixed, single_engine::kModeDynamic}) {
@@ -135,10 +135,9 @@ void register_benchmarks_with_corpus_datasets() {
   CompressionDataset wiki_1GB_dataset = load_corpus_dataset("dataset/wiki_tmp");
   assert(wiki_1GB_dataset.size() == 1);
   static std::map<size_t, std::string> compressed_filenames;
-  for (const size_t read_size_ :
-       {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536,
-        131072, 232144}) {
-    const auto read_size = read_size_ * kkB;
+  for (const int read_size_ : {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+                               16384, 32768, 65536, 131072, 232144}) {
+    const auto read_size = static_cast<uint64_t>(read_size_) * kkB;
     compressed_filenames[read_size] =
         std::string("compressfile_") + std::to_string(read_size) + ".dat";
     size_t compressed_size = 0;
