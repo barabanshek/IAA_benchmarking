@@ -16,9 +16,9 @@
 //  from corpus with 4~kB split for each benchmark;
 //  - qpl_path_hardware for kParallelFixed, kParallelDynamic, and
 //  kParallelCanned for each benchmark from corpus with job parallezation.
-// - qpl_path_hardware for kMajorPageFaults, kMinorPageFaults, kAtsMiss, and
-// kNoFaults for each benchmark from corpus.
-// - full system (see code).
+//  - qpl_path_hardware for kMajorPageFaults, kMinorPageFaults, kAtsMiss, and
+//  kNoFaults for each benchmark from corpus.
+//  - full system (see code).
 void register_benchmarks_with_corpus_datasets() {
   static std::map<std::string, std::tuple<uint8_t *, size_t, double>>
       source_buffs;

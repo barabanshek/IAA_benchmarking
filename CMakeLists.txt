@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.16)
 
 # Build qpl.
+set(CMAKE_BUILD_TYPE Release)
 add_subdirectory(qpl)
 
 # gcc setup

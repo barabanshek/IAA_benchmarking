@@ -16,7 +16,6 @@ if len(sys.argv) != 3:
 # Command line arguments
 csv_file_path = sys.argv[1]
 plot_name = sys.argv[2]
-for_paper = True
 
 #
 time_ns_to_ms = 1000000
@@ -522,7 +521,7 @@ def plot_figure_3():
     kParallelDynamic = 1
     kParallelCanned = 2
 
-    prepare_and_plot_exp_3(plot_name + '_3', ['xml', 'mozilla', 'pillow'], [kParallelFixed, kParallelDynamic])
+    prepare_and_plot_exp_3(plot_name + '_3', None, [kParallelFixed, kParallelDynamic])
 
 def plot_figure_4():
     prepare_and_plot_exp_4(plot_name + '_4', ['mozilla', 'pillow'])
@@ -530,9 +529,8 @@ def plot_figure_4():
 def plot_figure_5():
     prepare_and_plot_exp_5(plot_name + '_5')
 
-if for_paper:
-    plot_figure_1()
-    plot_figure_2()
-    plot_figure_3()
-    plot_figure_4()
-    plot_figure_5()
+plot_figure_1()
+plot_figure_2()
+plot_figure_3()
+plot_figure_4()
+plot_figure_5()

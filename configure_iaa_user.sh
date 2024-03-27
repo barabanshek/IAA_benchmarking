@@ -56,7 +56,7 @@ done
 
 echo
 echo "************"
-echo "Enabling things..."
+echo "Enabling Accelerators"
 echo "************"
 echo
 
