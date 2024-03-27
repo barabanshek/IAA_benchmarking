@@ -6,7 +6,7 @@ add_subdirectory(qpl)
 
 # gcc setup
 add_definitions(-std=c++17 -O3 -march=native)
-add_definitions(-Wall -Wextra -Wabi -Wsign-conversion -Wformat -Wformat-security)
+add_definitions(-Wall -Wextra -Wsign-conversion -Wformat -Wformat-security)
 add_definitions(-pedantic)
 add_definitions(-fstack-protector -fPIE -fPIC)
 add_definitions(-D_FORTIFY_SOURCE=2)

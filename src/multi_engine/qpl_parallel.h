@@ -76,20 +76,21 @@ int compress(CompressionMode mode, const uint8_t *src, size_t src_size,
     }
   }
 
-  // Submit compres
+  // Submit compress.
   size_t src_offst = 0;
   size_t chunk_cnt = 0;
   for (auto &job_buffer : job_buffers) {
-    size_t chunk_size = std::get<0>(compressed_buff->at(chunk_cnt)).size();
+    size_t in_chunk_size = std::get<1>(compressed_buff->at(chunk_cnt));
+    size_t available_chunk_size =
+        std::get<0>(compressed_buff->at(chunk_cnt)).size();
 
     auto job = reinterpret_cast<qpl_job *>(job_buffer.get());
     job->op = qpl_op_compress;
     job->level = qpl_default_level;
     job->next_in_ptr = const_cast<uint8_t *>(src) + src_offst;
-    job->available_in = chunk_size;
+    job->available_in = in_chunk_size;
     job->next_out_ptr = std::get<0>(compressed_buff->at(chunk_cnt)).data();
-    // TODO (Nikita): no idea why -1, but ERROR 2 is returned if not doing so...
-    job->available_out = chunk_size - 1;
+    job->available_out = available_chunk_size;
     job->flags = QPL_FLAG_FIRST | QPL_FLAG_OMIT_VERIFY | QPL_FLAG_LAST;
 
     if (mode == kParallelCanned) {
@@ -105,7 +106,7 @@ int compress(CompressionMode mode, const uint8_t *src, size_t src_size,
       return -1;
     }
 
-    src_offst += chunk_size;
+    src_offst += in_chunk_size;
     ++chunk_cnt;
   }
 
@@ -190,6 +191,7 @@ int decompress(CompressedFormat &compressed_buff, uint8_t *dst,
       }
     }
   }
+
   *dst_actual_size = decompress_size;
   return 0;
 }

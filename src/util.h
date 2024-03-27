@@ -16,6 +16,17 @@
 #include "qpl/qpl.h"
 #include <benchmark/benchmark.h>
 
+// Common defs for benchmarks.
+#define _PARSE_IN                                                              \
+  va_list args;                                                                \
+  va_start(args, Inputs);
+#define _PARSE_OUT va_end(args);
+#define _PARSE_ARG(X) va_arg(args, X)
+
+// Fill page with '1's to prefault it; 0-initialization does not work due to the
+// zero-page optimization.
+#define _PAGE_PREFAULT_ 1
+
 // Some nice constants.
 static constexpr uint64_t kkB = 1024;
 static constexpr uint64_t kMB = 1024 * 1024;
@@ -150,13 +161,14 @@ CompressionDataset load_corpus_dataset(const char *dataset_path) {
     if (fd == -1)
       LOG(FATAL) << "failed to open benchmark file " << filename << ", "
                  << strerror(errno);
-    size_t fd_size = static_cast<size_t>(lseek(fd, 0L, SEEK_END));
+    ssize_t fd_size = lseek(fd, 0L, SEEK_END);
     lseek(fd, 0L, SEEK_SET);
     LOG(INFO) << "Found file: " << filename << " of size: " << fd_size << " B";
-    uint8_t *mem = reinterpret_cast<uint8_t *>(malloc(fd_size));
-    if (read(fd, mem, fd_size) != fd_size)
+    uint8_t *mem =
+        reinterpret_cast<uint8_t *>(malloc(static_cast<size_t>(fd_size)));
+    if (read(fd, mem, static_cast<size_t>(fd_size)) != fd_size)
       LOG(FATAL) << "Failed to read benchmark file " << filename;
-    double entropy = compute_entropy(mem, fd_size);
+    double entropy = compute_entropy(mem, static_cast<size_t>(fd_size));
     dataset.push_back(std::make_tuple(fd_size, filename, entropy, mem));
   }
 
