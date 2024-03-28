@@ -7,7 +7,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update -y; \
     apt upgrade -y; \
     apt install -y build-essential libboost-all-dev python3 git cmake alien \
-                   libgflags-dev pkg-config asciidoc wget uuid-dev libjson-c-dev;
+                   libgflags-dev pkg-config asciidoc wget uuid-dev libjson-c-dev \
+		   sudo;
 
 # Install glog.
 RUN git clone https://github.com/google/glog.git; \
@@ -39,4 +40,5 @@ RUN git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git; \
     cmake ..; \
     make -j;
 
-CMD LD_LIBRARY_PATH=/usr/local/lib IAA_benchmarking/build/iaa_bench
+CMD LD_LIBRARY_PATH=/usr/local/lib \
+	 IAA_benchmarking/build/iaa_bench --benchmark_repetitions=1 --benchmark_min_time=1x --benchmark_format=csv --logtostderr
