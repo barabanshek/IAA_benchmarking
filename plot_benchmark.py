@@ -98,6 +98,10 @@ def prepare_data_1(mode_filter, b_name_filter):
 # Plot #1 - SW vs. HW, single thread, different message sizes, different b_name.
 def plot_exp_1(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis=False, omit_y2_axis=False, omit_legend=False):
     compress_data = data[0]
+    if compress_data['Software'] == {} or compress_data['Hardware'] == {}:
+        print("No data for exp_1 found")
+        return
+
     fig, ax = plt.subplots(1, 1, figsize=(len(compress_data['Software']) * 1.5, 4.5))
     ax_1 = ax.twinx()
 
@@ -158,6 +162,10 @@ def plot_exp_1(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis=F
 
 def plot_exp_1_a(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis=False, omit_legend=False):
     decompress_data = data[1]
+    if decompress_data['Software'] == {} or decompress_data['Hardware'] == {}:
+        print("No data for exp_1 found")
+        return
+
     fig, ax = plt.subplots(1, 1, figsize=(len(decompress_data['Software']) * 0.7, 4.5))
 
     data_software = decompress_data['Software']
@@ -241,6 +249,11 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
             data[b_name][mode][3] = time_ms
         else:
             exit(0)
+
+    #
+    if data == {}:
+        print("No data for exp_2 found")
+        return
 
     # plot.
     fig, axs = plt.subplots(1, len(data), figsize=(len(data) * 8, 5.5))
@@ -337,6 +350,11 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
         else:
             exit(0)
 
+    #
+    if data == {}:
+        print("No data for exp_3 found")
+        return
+
     fig, axs = plt.subplots(len(data), len(modes), figsize=(len(modes) * 5.5, len(data) * 3.5))
     for (b_name, b_data), ax_s, id_x in zip(data.items(), axs, range(len(axs))):
         for (m_name, m_data), ax in zip(b_data.items(), ax_s):
@@ -406,6 +424,11 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
         else:
             exit(0)
 
+    #
+    if data == {}:
+        print("No data for exp_4 found")
+        return
+
     fig, axs = plt.subplots(1, len(data), figsize=(6.7 * len(data), 5))
     for (b_name, b_data), ax, id_x in zip(data.items(), axs, range(len(axs))):
         ax_1 = ax.twinx()
@@ -458,6 +481,11 @@ def prepare_and_plot_exp_5(plot_name):
             data[mode] = {}
 
         data[mode][file_size] = (file_size/time_ms) * 1000 / (1024 * 1024)
+
+    #
+    if data == {}:
+        print("No data for exp_5 found")
+        return
 
     fig, ax = plt.subplots(1, 1, figsize=(8.5, 4.5))
     arr = np.zeros((1, len(list(data.values())[0].values())))
