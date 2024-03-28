@@ -11,6 +11,9 @@ add_definitions(-pedantic)
 add_definitions(-fstack-protector -fPIE -fPIC)
 add_definitions(-D_FORTIFY_SOURCE=2)
 
+#
+add_compile_definitions(GLOG_USE_GLOG_EXPORT)
+
 # Stuff.
 find_package (glog REQUIRED)
 find_package (gflags REQUIRED)
