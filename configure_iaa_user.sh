@@ -98,7 +98,20 @@ for ((i = ${start}; i < ${end}; i += ${step})); do
 
  # Config all WQs (even if only 1 is used), otherwise the config will fail.
  for ((j = 0; j < ${max_wqs}; j += 1)); do
+  # -g: group-id
+  # -s: wq size
+  # -p: wq priority
+  # -m: mode, dedicated/shared
+  # -n: name
+  # -t: threashold
+  # -x: max transfer size
+  # -b: block on fault (not supported in some systems)
+  # 
+  # Basic config.
   accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user
+  
+  # Extended config.
+  # accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user -x 1073741824 -b 1
  done
 
  # Enable device.
