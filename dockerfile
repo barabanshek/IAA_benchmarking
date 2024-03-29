@@ -40,8 +40,14 @@ RUN wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/linux/nasm-2.16.01-0
     dpkg -i nasm_2.16.01-1_amd64.deb
 
 # Build benchmark.
-RUN git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git; \
-    cd IAA_benchmarking; \
+RUN mkdir /IAA_benchmarking
+COPY src/ /IAA_benchmarking/src
+COPY qpl/ /IAA_benchmarking/qpl
+COPY CMakeLists.txt /IAA_benchmarking
+COPY plot_benchmark.py /IAA_benchmarking
+COPY run_benchmark.sh /IAA_benchmarking
+
+RUN cd IAA_benchmarking; \
     mkdir build; \
     cd build; \
     cmake ..; \

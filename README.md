@@ -3,7 +3,7 @@
 A set of benchmarks for Intel IAA compression/decompression (based on [QPL](https://intel.github.io/qpl) library) used in the paper ["Sabre: Improving Memory Prefetching in Serverless MicroVMs with Near-Memory Hardware-Accelerated Compression"]().
 
 ## Run with Docker
-* get docker image: `TODO`
+* get docker image: `docker pull barabanshik/sabre_iaa_benchmark:latest`
 * clone the repo with submodules: `git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git`
 * get datasets: `cd dataset/; ./extract.sh; cd ..`
 * setup the machine (fix all CPU frequencies): `./prepare_machine.sh <freq, kHz>`
