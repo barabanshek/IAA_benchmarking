@@ -155,7 +155,7 @@ def plot_exp_1(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis=F
     ax.grid()
 
     for r in ['png', 'pdf']:
-        plot_name_ = f'{plot_name}.{r}'
+        plot_name_ = f'out/{plot_name}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name_}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name_}")
@@ -205,7 +205,7 @@ def plot_exp_1_a(plot_name, data, name_suffix, omit_x_labels=False, omit_y1_axis
     ax.grid()
 
     for r in ['png', 'pdf']:
-        plot_name_ = f'{plot_name}.{r}'
+        plot_name_ = f'out/{plot_name}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name_}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name_}")
@@ -298,7 +298,7 @@ def prepare_and_plot_exp_2(plot_name, b_name_filter):
         ax.grid()
 
     for r in ['png', 'pdf']:
-        plot_name_ = f'{plot_name}.{r}'
+        plot_name_ = f'out/{plot_name}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name_}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name_}")
@@ -380,7 +380,7 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
         ax_s[0].set_ylabel('Throughput, GB/s', fontsize=text_size_big)
 
     for r in ['png', 'pdf']:
-        plot_name_ = f'{plot_name}.{r}'
+        plot_name_ = f'out/{plot_name}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name_}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name_}")
@@ -458,7 +458,7 @@ def prepare_and_plot_exp_4(plot_name, b_name_filter):
             ax.set_ylabel('Time, ms', fontsize=text_size_ultrabig)
 
     for r in ['png', 'pdf']:
-        plot_name_ = f'{plot_name}.{r}'
+        plot_name_ = f'out/{plot_name}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name_}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name_}")
@@ -519,7 +519,7 @@ def prepare_and_plot_exp_5(plot_name):
     ax.legend(fontsize=text_size_small, loc='upper left')
 
     for r in ['png', 'pdf']:
-        plot_name_ = f'{plot_name}.{r}'
+        plot_name_ = f'out/{plot_name}.{r}'
         fig.tight_layout(pad=2.0)
         plt.savefig(f'{plot_name_}', format=r, bbox_inches="tight")
         print(f"Plot saved in {plot_name_}")

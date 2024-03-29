@@ -11,4 +11,5 @@ sudo LD_LIBRARY_PATH=/usr/local/lib ./build/iaa_bench --benchmark_repetitions=${
 
 # Plot results.
 source /.venv/bin/activate
+mkdir out
 python3 plot_benchmark.py results.csv ${name}
