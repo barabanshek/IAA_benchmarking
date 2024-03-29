@@ -10,6 +10,13 @@ RUN apt update -y; \
                    libgflags-dev pkg-config asciidoc wget uuid-dev libjson-c-dev \
 		           sudo;
 
+# Python stuff for plotting.
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+RUN apt install -y python3.10-venv; \
+    python3 -m venv .venv; \
+    source .venv/bin/activate; \
+    pip install pandas
+
 # Install glog.
 RUN git clone https://github.com/google/glog.git; \
     cd glog; \
@@ -40,4 +47,5 @@ RUN git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git; \
     cmake ..; \
     make -j;
 
-ENTRYPOINT ["IAA_benchmarking/run_benchmark.sh"]
+WORKDIR /IAA_benchmarking
+ENTRYPOINT ["./run_benchmark.sh"]
