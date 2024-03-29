@@ -43,7 +43,7 @@ A set of benchmarks for Intel IAA compression/decompression (based on [QPL](http
     * on some hardware, some benchmarks might fail, we suggest to manually change the benchmark pass in `src/main.cc` and run this specific benchmark again; Example of a failed benchmark:
         * "BM_MultipleEngine_DeCompress_21100kB_name_dataset/silesia_tmp/samba_entropy_0.025140_jobs_22_mode_2",,,,,,,,false,"Failed to compress."
         * re-run with: `sudo ./build/iaa_bench --benchmark_repetitions=1 --benchmark_min_time=1x --benchmark_filter='.*BM_MultipleEngine_Compress_21100kB_name_dataset/silesia_tmp/samba_entropy_0.025140_jobs_26_mode_2.*' --benchmark_format=csv --logtostderr`
-* plot all results: `python3 plot_benchmark.py tmp/results.csv <prefix for the plot filenames>` (script will SKIP data from failed benchmarks)
+* plot all results: `python3 plot_benchmark.py results.csv <prefix for the plot filenames>` (script will SKIP data from failed benchmarks)
     * plot script is "quickly" written and is not configurable via cmdline args, please adjust manually if needed
 
 ## APPENDIX: configuration used for the paper
