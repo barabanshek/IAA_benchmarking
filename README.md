@@ -10,7 +10,7 @@ A set of benchmarks for Intel IAA compression/decompression (based on [QPL](http
 * configure hardware: `sudo ./configure_iaa_user.sh 0 <# of IAA devices> <WQ size> <# of engines per IAA device>`, make sure the script does NOT show errors after the line *"Enabling Accelerators"*
     * verify hardware configuration: `sudo accel-config list`, please, read [documentation](https://github.com/intel/idxd-config/blob/stable/Documentation/accfg/accel-config-list.txt) for interpretation
 * run benchmark: `./run_docker.sh <N of iteration> <benchmark filter regex>`, `<N of iteration>` must be > 1
-    * example: `./run_docker.sh 10 '.*'` - run all benchmarks, 10 times each
+    * example: `./run_docker.sh 10 '.'` - run all benchmarks, 10 times each
     * example: `./run_docker.sh 10 '.*FullSystem.*'` - run only full system benchmarks
     * example: `./run_docker.sh 10 '.*SingleEngine.*'` - run only single engine benchmarks
 * the results will be plotted and placed in `out/` folder
