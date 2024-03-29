@@ -45,7 +45,7 @@ RUN git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git; \
     mkdir build; \
     cd build; \
     cmake ..; \
-    make -j120;
+    make -j;
 
 WORKDIR /IAA_benchmarking
 ENTRYPOINT ["./run_benchmark.sh"]
