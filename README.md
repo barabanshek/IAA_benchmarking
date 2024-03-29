@@ -15,6 +15,7 @@ A set of benchmarks for Intel IAA compression/decompression (based on [QPL](http
     * example: `./run_docker.sh 10 '.*SingleEngine.*'` - run only single engine benchmarks
 * the results will be plotted and placed in `out/` folder
 * if custom changing in plotting is needed, the raw data will also be in `out/`
+* as of now, Docker runs are not always stable; if fails - re-run again or use the manual run
 
 ## Build locally and run manually
 
