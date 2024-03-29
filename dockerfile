@@ -15,7 +15,7 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN apt install -y python3.10-venv; \
     python3 -m venv .venv; \
     source .venv/bin/activate; \
-    pip install pandas
+    pip install pandas matplotlib
 
 # Install glog.
 RUN git clone https://github.com/google/glog.git; \
@@ -45,7 +45,7 @@ RUN git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git; \
     mkdir build; \
     cd build; \
     cmake ..; \
-    make -j;
+    make -j120;
 
 WORKDIR /IAA_benchmarking
 ENTRYPOINT ["./run_benchmark.sh"]
