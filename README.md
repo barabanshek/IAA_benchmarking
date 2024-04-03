@@ -51,7 +51,7 @@ popd
 ```
 
 #### Run benchmarks and collect/plot results
-Configure the machine as for [docker run](#run-with-docker)
+Configure the machine as for [docker run](#run-with-docker).
 
 Run (all benchmarks) N times each and collect data as a .csv file: 
 ```
@@ -64,7 +64,8 @@ sudo ./build/iaa_bench --benchmark_repetitions=<N> --benchmark_min_time=1x --ben
 Verify benchmarks for errors and issues:
 * make sure `stdout` does NOT contain line *"***WARNING*** Library was built as DEBUG. Timings may be affected."*
 * `cat results.csv | grep false` will return any skipped/failed benchmark, idealy NONE
-* on some hardware, some benchmarks might fail, we suggest to manually change the benchmark pass in `src/main.cc` and run this specific benchmark again
+* on some hardware, some benchmarks might fail, we suggest to manually change the benchmark pass in `src/main.cc` and run this specific benchmark again.
+
 Plot all results:
 ```
 python3 plot_benchmark.py results.csv <prefix for the plot filenames>
