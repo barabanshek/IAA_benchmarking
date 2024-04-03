@@ -52,6 +52,7 @@ popd
 
 #### Run benchmarks and collect/plot results
 Configure the machine as for [docker run](#run-with-docker)
+
 Run (all benchmarks) N times each and collect data as a .csv file: 
 ```
 sudo ./build/iaa_bench --benchmark_repetitions=<N> --benchmark_min_time=1x --benchmark_format=csv --logtostderr | tee results.csv
