@@ -344,9 +344,9 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
             data[b_name][mode][job_n] = [compression_ratio, entropy, 0, 0, size]
 
         if op == 'Compress':
-            data[b_name][mode][job_n][2] = (size / time_ms) * 1000 / (1024 * 1024)
+            data[b_name][mode][job_n][2] = time_ms
         elif op == 'DeCompress':
-            data[b_name][mode][job_n][3] = (size / time_ms) * 1000 / (1024 * 1024)
+            data[b_name][mode][job_n][3] = time_ms
         else:
             exit(0)
 
@@ -373,11 +373,12 @@ def prepare_and_plot_exp_3(plot_name, b_name_filter, mode_filter):
             ax.set_xticklabels(df_raw['Key'], fontsize=text_size_medium, rotation=45)
             ax.yaxis.set_tick_params(labelsize=text_size_medium, rotation=0)
             ax.set_title(f'{b_name} ({size:.1f} MB)/{mode_names[m_name]}', fontsize=text_size_big)
-            if id_x == 2:
+            ax.set_yscale('log')
+            if id_x == len(axs) - 1:
                 ax.set_xlabel('Number of jobs', fontsize=text_size_big)
             ax.grid()
 
-        ax_s[0].set_ylabel('Throughput, GB/s', fontsize=text_size_big)
+        ax_s[0].set_ylabel('Latency, ms', fontsize=text_size_big)
 
     for r in ['png', 'pdf']:
         plot_name_ = f'out/{plot_name}.{r}'
@@ -549,7 +550,7 @@ def plot_figure_3():
     kParallelDynamic = 1
     kParallelCanned = 2
 
-    prepare_and_plot_exp_3(plot_name + '_3', None, [kParallelFixed, kParallelDynamic])
+    prepare_and_plot_exp_3(plot_name + '_3', ['pillow', 'reymont'], [kParallelFixed, kParallelDynamic])
 
 def plot_figure_4():
     prepare_and_plot_exp_4(plot_name + '_4', ['mozilla', 'pillow'])
