@@ -15,4 +15,4 @@ cp results.csv out/
 
 # Plot results.
 source /.venv/bin/activate
-python3 plot_benchmark.py results.csv ${result_name}
+python3 plot_benchmark.py out/results.csv ${result_name}
