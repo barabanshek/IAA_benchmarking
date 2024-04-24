@@ -74,5 +74,5 @@ python3 plot_benchmark.py results.csv <prefix for the plot filenames>
 **IMPORTANT:** Plot script is "quickly" written and is not configurable via cmdline args, please adjust manually if needed.
 
 ## APPENDIX: configuration used for the paper
-* 1.7 GHz CPU: `./prepare_machine.sh 1700000`
+* 1.7 GHz CPU: `./prepare_machine.sh 2100000`
 * 4 IAA devices with 8 engines per device: `./configure_iaa_user.sh 0 1,7 16 8`
