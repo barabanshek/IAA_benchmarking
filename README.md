@@ -11,7 +11,7 @@ git clone --recursive https://github.com/barabanshek/IAA_benchmarking.git
 pushd dataset/; ./extract.sh; popd
 
 # Setup the machine (fix all CPU frequencies)
-./prepare_machine.sh <freq, kHz>
+sudo ./prepare_machine.sh <freq, kHz>
 
 # Configure hardware; make sure the script does NOT show errors after the line "Enabling Accelerators"
 sudo ./configure_iaa_user.sh 0 <# of IAA devices> <WQ size> <# of engines per IAA device>
