@@ -108,10 +108,10 @@ for ((i = ${start}; i < ${end}; i += ${step})); do
   # -b: block on fault (not supported in some systems)
   # 
   # Basic config.
-  accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user
+#   accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user
   
   # Extended config.
-  # accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user -x 1073741824 -b 1
+  accel-config config-wq iax${i}/wq${i}.${j} -g 0 -s $wq_size -p 10 -m ${mode} -y user -n user${i} -t $wq_size -d user -x 1073741824 -b 1
  done
 
  # Enable device.
